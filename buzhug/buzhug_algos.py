@@ -1,4 +1,5 @@
-"""Implementation of fast search algorithms
+"""
+Implementation of fast search algorithms
 Used in select when one of the search fields has a fixed-length size
 
 Instead of taking all the blocks in field files one after the other, a big
@@ -15,13 +16,14 @@ except NameError:
     from sets import Set as set
 
 def rev(s):
-    """ function used to compare strings in decreasing order"""
+    """ function used to compare strings in decreasing order """
     return ''.join([chr(255-ord(c)) for c in s])
 
 def make_search_func(db,field,value):
-    """Return the search function on a field
+    """
+    Return the search function on a field
     If value is a pair of values (v1,v2), all blocks between v1 and v2
-    will be returned ; if value is a single value then all blocks with
+    will be returned; if value is a single value then all blocks with
     this value will be returned
     """
     bl = db._file[field].block_len  # block length
@@ -50,7 +52,8 @@ def make_search_func(db,field,value):
         Max = s2[lc:] # part of s2 not common with s1
 
         def _search(buf):
-            """Function searching blocks in the buffer such that
+            """
+            Function searching blocks in the buffer such that
             s1 <= block <= s2
             Return a dictionary mapping rank of the block to the block
             
@@ -79,7 +82,8 @@ def make_search_func(db,field,value):
         v = db.f_encode[db.fields[field]](value)
 
         def _search(buf):
-            """Function searching blocks in the buffer such that
+            """
+            Function searching blocks in the buffer such that
             block == v
             Return a dictionary mapping rank of the block to the block
             
@@ -102,8 +106,9 @@ def make_search_func(db,field,value):
     return _search
 
 def fast_select(db,names,**args):
-    """Handles requests like select(['name'],age=23,name='pierre') when
-    one of the arg keys is fixed length type ; uses a fast search algo
+    """
+    Handles requests like select(['name'],age=23,name='pierre') when
+    one of the arg keys is fixed length type; uses a fast search algo
     instead of browsing all the records
     
     The search functions are defined for all fixed-length arguments and
@@ -164,7 +169,7 @@ def fast_select(db,names,**args):
 
     for i,lines in enumerate(itertools.izip(*other_files)):
         try:
-            if i == fl_ranks[0]:
+            if i == fl_ranks[0]
                 fl_ranks.pop(0)
                 if lines[:nbvl] == vl_values:
                     res[i]+=list(lines)
