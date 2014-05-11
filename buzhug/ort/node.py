@@ -1,8 +1,6 @@
 import bisect
 import itertools
 import operator
-from btrees.bnode import *
-from btrees.bplusleaf import *
 from tree import RangeTree
 
 
@@ -29,7 +27,7 @@ class RangeNode(object):
             # might as well set our dimension while we're at it
             self.dimension = item[0][0]
 
-        # Bam
+        # Next-level shit
         self.linked_tree = RangeTree(data, B)
 
     # Return a string representing this node for printing.
@@ -43,7 +41,7 @@ class RangeNode(object):
     def get_child_for(self, key):
         if key < self.min or key > self.max:
             return None
-        
+
         # We want the index of the first child whose minimum value is graater
         # than or equal to key.
         index = next(k[0] for k in enumerate(self.values) if key < k[1],
@@ -63,7 +61,7 @@ class RangeNode(object):
     def get_successor_path(self, key):
         next_c = get_child_for(self, key)
         if next_c == None:
-            if key < self.min: 
+            if key < self.min:
                 next_c = (self.children[0], 0)
             else:
                 return None
@@ -74,7 +72,7 @@ class RangeNode(object):
     def get_predecessor_path(self, key):
         next_c = get_child_for(self, key)
         if next_c == None:
-            if key > self.max: 
+            if key > self.max:
                 next_c = (self.children[-1], len(self.values))
             else:
                 return None
@@ -85,36 +83,36 @@ class RangeNode(object):
     def get_all_data(self):
         data = []
         for child in children:
-            data += child.get_all_data()
+            data.extend(child.get_all_data())
+
+        # possible optimization:
+        # data = map(RangeNode.get_all_data, children)
 
         return data
 
     # Get all the data in a range of values. A generalization of get_all_data.
     def get_range_data(self, start, end):
-        if start < self.min:
-            si = -1 
-        else:
-            sc, si = self.get_child_for(start)
-
-        if end > self.max:
-            ei = len(self.children)
-        else:
-            ec, ei = self.get_child_for(end)
+        # Get the indices of the children containing the start and end keys, or
+        # note that they are out of our range.
+        si = self.get_child_for(start)[1] if start >= self.min
+                else -1
+        ei = self.get_child_for(end)[1] if end >= self.max
+                else len(self.children)
 
         data = []
 
-        # First, recurse on the child containing the start key
+        # First, recurse on the child containing the start key.
         if si >= 0:
-            data += self.children[si].get_range_data(start, end)
-        
-        # Next, grab everything from all the children in between start & end
+            data.extend(self.children[si].get_range_data(start, end))
+
+        # Next, grab everything from all the children in between start & end.
         if ei >= si + 2:
             for i in range(si + 1, ei):
-                data += self.children[i].get_all_data()
+                data.extend(self.children[i].get_all_data())
 
-        # Recurse on the child containing the end key
+        # Recurse on the child containing the end key.
         if ei > si:
-            data += self.children[ei].get_range_data(start, end)
+            data.extend(self.children[ei].get_range_data(start, end))
 
         return data
 
@@ -123,48 +121,49 @@ class RangeNode(object):
     # items included in the range from this node's subtree.
     # TODO stuff1!!
     def range_query(self, ranges):
-        # First get the left and right keys from the first dimension in 
+        # First get the left and right keys from the first dimension in
         # sorted order, then find their paths
         dim, (start, end) = ranges[0]
-        
-        # the query in the next dimension is everything left
-        nranges = ranges[1:]
+
+        # If there is no key in our dimension, go to the next tree
+        if self.dimension != dim:
+            return self.linked_tree.range_query(ranges)
 
         # If the next dimension is ours, search this tree. Otherwise move on to
         # the next dimension's tree and continue.
-        if self.dimension == dim:
-            # all the nodes our query finds
-            results = []
+        # The query in the next dimension is everything other than this one.
+        nranges = ranges[1:]
 
-            # The base case: there are no other dimensions to query, so return
-            # all nodes in the range.
-            if not nranges:
-                return self.get_range_data(start, end)
+        # The base case: there are no other dimensions to query, so return
+        # all nodes in the range.
+        if not nranges:
+            return self.get_range_data(start, end)
 
-            # otherwise, search recursively on the nodes in the range.
-            # lpath & rpath are the paths to the start and end of the range
-            lpath = self.(start)
-            rpath = self.get_path_to(end)
-            
-            # We want to find all subtrees rooted between the two paths, and
-            # recursively search those. Walk down the path to the leaf. At each
-            # step, perform the (d-1)-dimensional query on the linked trees of all
-            # nodes within the range.
-            parent = self
-            for
-            for i in range(len(lpath)):
-                # the next node, and its index in its parent
-                node, index = lpath[i]
-                # look at all the nodes fully within the range first
-                for p in parent.children[index:]
-                    results += c.linked_tree.range_query(nranges)
+        # Otherwise, search recursively on the nodes in the range.
+        # lchild & rchild are the nodes containing the start and end of the
+        # range
+        left = self.get_child_for(start)
+        right = self.get_child_for(end)
+        lc, li = left if left else (None, -1)
+        rc, ri = right if right else (None, len(self.children))
 
-                parent = node
+        # We want to find all subtrees rooted between the two paths, and
+        # recursively search those. Perform a (d-1)-dimensional query on the
+        # linked trees of all of this node's children completely within the
+        # range, and perform the same d-dimensional query on the nodes at
+        # the edge of the range (lchild and rchild).
+        results = []
 
-            return results
+        if left:
+            results.extend(lc.range_query(ranges))
 
-        # If there is no key in our dimension, go to the next tree
-        return self.linked_tree.range_query(ranges)
+        if ri - li > 2:
+            results.extend(c.linked_tree.range_query(nranges)
+
+        if right and ri > li:
+            results.extend(rc.range_query(ranges))
+
+        return results
 
     # Make this node into a file for storage.
     def serialize(self):
@@ -173,4 +172,4 @@ class RangeNode(object):
 
 class RangeLeaf(RangeNode):
     def __init__(self, data):
-        self.data = 
+        self.data =
