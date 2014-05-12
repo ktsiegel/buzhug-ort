@@ -114,24 +114,40 @@ def fast_select(db, names, ort=False, **args):
     The search functions are defined for all fixed-length arguments and
     used to select a subset of record rows in field files
     """
-    # SW: only do range search if range tree exists
-    ort = ort and db.tree
+    # SW: only do a range query if tree is already built
+    ort = ort and db.tree != None
+    if ort:
+        # only look at fields that have fixed length for now
+        # these can be ints, floats
+        range_args = [(k,v) for k,v in args.iteritems() 
+            if hasattr(db._file[k],'block_len') and isinstance(value,(list,tuple))]
+
+        # we need res to be a dictionary of rank -> list of blocks, one
+        # for each name in names
+        res = {}
+
+        # tree returns a list of ranks that we need to get the blocks for
+        ranks = self.db.tree.range_query(range_args)
+
+        # - rank is a record's position in a fixed-length file (db file where the
+        #   field type is a literal like int)
+        # - so for a record with rank r, if we want its field k, it's something
+        #   like going to byte position r*block_size in db._file[k] and reading
+        #   out one block_size worth of bytes
+        
+        # TODO: get the blocks corresponding to ranks
+
+        # SW: if we're doing a range query, let's ignore the other query args
+        # for now...
+        return res, names
 
     # fixed and variable length fields
-    if ort:
-        f_args = [(k,v) for k,v in args.iteritems() 
-            if hasattr(db._file[k],'block_len') and not isinstance(value,(list,tuple))]
-        range_args = [ (k,v) for k,v in args.iteritems() 
-            if hasattr(db._file[k],'block_len') and isinstance(value,(list,tuple))]
-    else:
-        f_args = [(k,v) for k,v in args.iteritems() 
-            if hasattr(db._file[k],'block_len')]
-
+    f_args = [ (k,v) for k,v in args.iteritems() 
+        if hasattr(db._file[k],'block_len')]
     v_args = [ (k,v) for (k,v) in args.iteritems() 
         if not hasattr(db._file[k],'block_len') ]
     arg_names = [ k for k,v in f_args + v_args ]
     no_args = [ n for n in names if not n in arg_names ]
-    # names is all fields selected for, plus also fields part of query
     names = arg_names + no_args
 
     [ db._file[k].seek(0) for k in names + args.keys() ]
@@ -143,13 +159,6 @@ def fast_select(db, names, ort=False, **args):
     bl_offset = 0 # offset of current chunck
     res = {}
     
-    # TODO: get ranks matching range query first 
-    if ort:
-        tree = tree.RangeTree([], 0, self.tree_name)
-        range_ranks = tree.range_query(range_args)
-        # TODO: look up the field blocks if we're not storing data on the tree
-        # nodes 
-
     while True:
         buf = {}
         ranks = {}
@@ -167,7 +176,6 @@ def fast_select(db, names, ort=False, **args):
         rank_set=set(ranks[f_args[0][0]].keys())
         if len(f_args)>1:
             for (k,v) in f_args[1:]:
-                # TODO: take an intersection with the range ranks
                 rank_set = rank_set.intersection(set(ranks[k].keys()))
         for c in rank_set:
             res[bl_offset+c] = [ ranks[k][c] for k,v in f_args ]
@@ -191,7 +199,7 @@ def fast_select(db, names, ort=False, **args):
         try:
             if i == fl_ranks[0]:
                 fl_ranks.pop(0)
-                # SW: checks if all queried variable length values match this
+                # checks if all queried variable length values match this
                 # record
                 if lines[:nbvl] == vl_values:
                     res[i]+=list(lines)

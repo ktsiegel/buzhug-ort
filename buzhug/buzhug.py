@@ -627,20 +627,19 @@ class Base:
 
     def build_tree(self, fields=None, B=2):
         """
-        Build the range tree woo
+        SW: Build the range tree woo
         """
         if fields == None:
             fields = []
         # filter for fields that have comparable types
         fields = [field for field in fields
-                if self.fields[field] not in [int, float, bool]]
+                if self.fields[field] not in [int, float]]
                 
         # get all...should we be selecting for dimensions here or do we need
         # whole record?
         records, names = self._select(None, None)
         # build the tree if it doesn't exist already
-        tree.RangeTree(records, B, self.tree_name)
-        self.tree = True
+        self.tree = tree.RangeTree(records, B, self.tree_name)
 
     def commit(self):
         """Save all changes on disk"""
