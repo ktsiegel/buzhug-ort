@@ -2,25 +2,25 @@ from node import RangeNode
 from tree import RangeTree
 
 class RangeLeaf(RangeNode):
-    def __init__(self, data, B):
-        self.data = data
+
+    # Initialize a leaf with a sorted set of data points
+    def __init__(self, data, B, dim):
+        self.data = map(lambda p: {k: v for k, v in p}, data)
+        self.dimension = data[0][0][0]  # ewwww
         self.min = min(data, key=lambda d: d[0][1])
         self.max = max(data, key=lambda d: d[0][1])
         self.B = B
 
-        # Now we make the tree this node links to in the next dimension,
-        # linked_tree.  We generate it by passing all of our data into a new
-        # RangeTree object.  First, though, we have to re-order the dimensions
-        # so that the next level sorts by the correct key.
-        new_data = []
-        for item in self.get_data():
+        # Now we make the leaf this node links to in the next dimension.
+        # Generate it by passing all of our data into a new RangeLeaf object.
+        # First, though, we have to re-order the dimensions so that the next
+        # level sorts by the correct key.
+        for item in data:
             # stick the first data item in the back, and we're good
-            new_data.append(item[1:] + [item[0]])
-            # might as well set our dimension while we're at it
-            self.dimension = item[0][0]
+            item.append(item.pop(0))
 
         # Next-level shit
-        self.linked_leaf = RangeLeaf(new_data, B)
+        self.linked_leaf = RangeLeaf(data, B)
 
     def get_all_data(self):
         return self.data
@@ -59,26 +59,11 @@ class RangeLeaf(RangeNode):
         if not nranges:
             return self.get_range_data(start, end)
 
-        # Otherwise, search recursively on the nodes in the range.
-        results = sorted(self.linked_leaf.range_query(nranges))
+        # We want to recurse down to the last dimension, and return everything
+        # that fits all the ranges. Perform a (d-1)-dimensional query on our
+        # linked leaf, and return the union of that result and our range.
+        their_results = self.linked_leaf.range_query(nranges)
+        my_results = set(self.get_range_data(start, end))
 
-        # si & ei are the nodes containing the start and end of the range
-        enum_values = ((index, point[0][1]) for index, point in
-                enumerate(results))
-        si = next(idx for idx, val in enum_values if val >= start,
-                default=len(enum_values))
-        ei = next(idx for idx, val in enum_values if val > end,
-                default=len(enum_values))
-
-        # We want to find all subtrees rooted between the two paths, and
-        # recursively search those. Perform a (d-1)-dimensional query on the
-        # linked trees of all of this node's children completely within the
-        # range, and perform the same d-dimensional query on the nodes at
-        # the edge of the range (lchild and rchild).
-        results = []
-
-        if ri > li:
-            results.extend(rc.range_query(ranges))
-
-        return results
-        pass
+        # TODO: make this better?
+        return = [r for r in their_results if r in my_results]

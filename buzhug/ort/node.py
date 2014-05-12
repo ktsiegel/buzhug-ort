@@ -4,6 +4,7 @@ class RangeNode(object):
     def __init__(self, children, B):
         # This points to the node's children in the tree
         self.children = children
+        self.dimension = None
         self.min = children[0].min
         self.max = children[-1].max
         self.B = B
@@ -20,9 +21,12 @@ class RangeNode(object):
         new_data = []
         for item in self.get_data():
             # stick the first data item in the back, and we're good
-            new_data.append(item[1:] + [item[0]])
+            ni = item[:]
+            ni.append(ni.pop(0))
+            new_data.append(ni)
             # might as well set our dimension while we're at it
-            self.dimension = item[0][0]
+            if not self.dimension:
+                self.dimension = item[0][0]
 
         # Next-level shit
         self.linked_tree = RangeTree(new_data, B)
