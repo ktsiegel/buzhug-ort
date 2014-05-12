@@ -332,6 +332,8 @@ class Base:
         self.f_decode = {} # key = data class, value = function from_block
         self.info_name = os.path.join(basename,'__info__')
         self.pos_name = os.path.join(basename,'__pos__')
+        # SW: range tree file 
+        self.tree_name = os.path.join(basename, '__tree__')
         for (c_obj,c_file) in self.types_map:
                 self._register_class(c_obj,c_file)
         # from_string[_class] is the function used to convert a string
@@ -623,6 +625,23 @@ class Base:
                     raise TypeError,"Can't convert %s into %s" %(kw[k],t)
         return or_kw
 
+    def build_tree(self, fields=None, B=2):
+        """
+        Build the range tree woo
+        """
+        if fields == None:
+            fields = []
+        # filter for fields that have comparable types
+        fields = [field for field in fields
+                if self.fields[field] not in [int, float, bool]]
+                
+        # get all...should we be selecting for dimensions here or do we need
+        # whole record?
+        records, names = self._select(None, None)
+        # build the tree if it doesn't exist already
+        tree.RangeTree(records, B, self.tree_name)
+        self.tree = True
+
     def commit(self):
         """Save all changes on disk"""
         self.close()
@@ -687,7 +706,7 @@ class Base:
         # reset deleted rows file
         self._del_rows = DeletedRowsFile(self.name,"__del_rows__").create()
 
-    def select(self,names=None,request=None,**args):
+    def select(self, names=None, request=None, ort=False, **args):
         """Select the records in the base that verify a predicate and return
         the specified names. If names is [] or None then all the fields are 
         returned
@@ -709,8 +728,8 @@ class Base:
         db.select(['name'],'age > c',c=30) # records with age > 30 and
                                # only field 'name' set
         """
-        res,names = self._select(names,request,**args)
-        return ResultSet(names,res.values())
+        res,names = self._select(names, request, ort, **args)
+        return ResultSet(names, res.values())
     
     def select_for_update(self,names=None,request=None,**args):
         """Same syntax as select, only checks that the field __version__
@@ -731,7 +750,7 @@ class Base:
     def __call__(self,**kw):
         return self.select_for_update(**kw)
 
-    def _select(self,_names,_request,**args):
+    def _select(self, _names, _request, ort=False, **args):
         """Private method that performs actual selection
         The field files are browsed line by line. A test function is built
         to compare the raw data found in these files to the arguments
@@ -770,7 +789,7 @@ class Base:
             # if there is at least one fixed length field to search, use the
             # fast_select algorithm
             if f_args:
-                res,names = buzhug_algos.fast_select(self,_names,**args)
+                res,names = buzhug_algos.fast_select(self, _names, ort, **args)
                 _Record = makeRecordClass(self,self.record_class,names)
                 for k in res.keys():
                     res[k] = _Record(res[k])
