@@ -1,5 +1,5 @@
 from node import RangeNode
-from tree import RangeTree
+from tree import build_tree
 
 class RangeLeaf(RangeNode):
 
@@ -20,8 +20,9 @@ class RangeLeaf(RangeNode):
             item.append(item.pop(0))
 
         # Next-level shit
-        self.linked_leaf = RangeLeaf(data, B)
+        self.linked_leaf = build_tree(data, B)
 
+    # Return everything.
     def get_all_data(self):
         return self.data
 
@@ -39,6 +40,7 @@ class RangeLeaf(RangeNode):
 
         return self.data[si:ei]
 
+    # Return everything in this leaf for the specified ranges
     def range_query(self, ranges):
         # First get the left and right keys from the first dimension in
         # sorted order, then find their paths

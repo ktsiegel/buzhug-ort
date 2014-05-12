@@ -1,4 +1,4 @@
-from tree import RangeTree
+from tree import build_tree
 
 class RangeNode(object):
     def __init__(self, children, B):
@@ -15,7 +15,7 @@ class RangeNode(object):
         self.values = [child.min for child in children[1:]]
 
         # Now we make the tree this node links to in the next dimension,
-        # linked_tree.  We generate it by passing all of our data into a new
+        # linked_node.  We generate it by passing all of our data into a new
         # RangeTree object.  First, though, we have to re-order the dimensions
         # so that the next level sorts by the correct key.
         new_data = []
@@ -29,7 +29,7 @@ class RangeNode(object):
                 self.dimension = item[0][0]
 
         # Next-level shit
-        self.linked_tree = RangeTree(new_data, B)
+        self.linked_node = build_tree(new_data, B)
 
     # Return a string representing this node for printing.
     def __repr__(self):
@@ -94,10 +94,9 @@ class RangeNode(object):
 
         return data
 
-    # This is the main function we'll be using. 'ranges' should be a list of
-    # (dimension/column name, (start, end)) tuples, sorted. Returns a list of
-    # items included in the range from this node's subtree.
-    # TODO stuff1!!
+    # This is the main function we'll be using. 'ranges' should be a dict of
+    # {dimension/column name: (start, end)}. Returns a list of items included in
+    # the range from this node's subtree.
     def range_query(self, ranges):
         # First get the left and right keys from the first dimension in
         # sorted order, then find their paths
@@ -105,7 +104,7 @@ class RangeNode(object):
             (start, end) = ranges[self.dimension]
         else:
             # If there is no key in our dimension, go to the next tree
-            return self.linked_tree.range_query(ranges)
+            return self.linked_node.range_query(ranges)
 
         # If the next dimension is ours, search this tree. Otherwise move on to
         # the next dimension's tree and continue.
@@ -137,7 +136,7 @@ class RangeNode(object):
             results.extend(lc.range_query(ranges))
 
         if ri - li > 2:
-            results.extend(c.linked_tree.range_query(nranges)
+            results.extend(c.linked_node.range_query(nranges)
         if right and ri > li:
             results.extend(rc.range_query(ranges))
 
