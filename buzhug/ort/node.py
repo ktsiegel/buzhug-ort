@@ -41,7 +41,7 @@ class RangeNode(object):
 
         # We want the index of the first child whose minimum value is greater
         # than key.
-        index = next(k[0] for k in enumerate(self.values) if k[1] >= key,
+        index = next(idx for idx, val in enumerate(self.values) if val >= key,
                 default=len(self.values))
 
         child = self.children[index]
@@ -97,16 +97,17 @@ class RangeNode(object):
     def range_query(self, ranges):
         # First get the left and right keys from the first dimension in
         # sorted order, then find their paths
-        dim, (start, end) = ranges[0]
-
-        # If there is no key in our dimension, go to the next tree
-        if self.dimension != dim:
+        if self.dimension in ranges:
+            (start, end) = ranges[self.dimension]
+        else:
+            # If there is no key in our dimension, go to the next tree
             return self.linked_tree.range_query(ranges)
 
         # If the next dimension is ours, search this tree. Otherwise move on to
         # the next dimension's tree and continue.
         # The query in the next dimension is everything other than this one.
-        nranges = ranges[1:]
+        nranges = ranges.copy()
+        del nranges[self.dimension]
 
         # The base case: there are no other dimensions to query, so return
         # all nodes in the range.

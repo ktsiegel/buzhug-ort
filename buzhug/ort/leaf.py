@@ -25,33 +25,34 @@ class RangeLeaf(RangeNode):
     def get_all_data(self):
         return self.data
 
+    # Get the indices of data points bounded by the start and end values in
+    # the first dimension.
     def get_range_data(self, start, end):
-        # Get the indices of data points bounded by the start and end values in
-        # the first dimension.
         # For each, we want the index of the first child whose minimum value is
         # greater than key.
-        self.values =
-        si = next(k[0] for k in enumerate(self.values) if k[1] >= start,
-                default=len(self.values))
-        ei = next(k[0] for k in enumerate(self.values) if k[1] >= end,
-                default=len(self.values))
+        enum_values = ((index, point[0][1]) for index, point in
+                enumerate(self.data))
+        si = next(idx for idx, val in enum_values if val >= start,
+                default=len(enum_values))
+        ei = next(idx for idx, val in enum_values if val > end,
+                default=len(enum_values))
 
-        data = self.data[si:ei]
-        return data
+        return self.data[si:ei]
 
     def range_query(self, ranges):
         # First get the left and right keys from the first dimension in
         # sorted order, then find their paths
-        dim, (start, end) = ranges[0]
-
-        # If there is no key in our dimension, go to the next tree
-        if self.dimension != dim:
-            return self.linked_tree.range_query(ranges)
+        if self.dimension in ranges:
+            (start, end) = ranges[self.dimension]
+        else:
+            # If there is no key in our dimension, go to the next-level leaf
+            return self.linked_leaf.range_query(ranges)
 
         # If the next dimension is ours, search this tree. Otherwise move on to
         # the next dimension's tree and continue.
         # The query in the next dimension is everything other than this one.
-        nranges = ranges[1:]
+        nranges = ranges.copy()
+        del nranges[self.dimension]
 
         # The base case: there are no other dimensions to query, so return
         # all nodes in the range.
@@ -59,12 +60,15 @@ class RangeLeaf(RangeNode):
             return self.get_range_data(start, end)
 
         # Otherwise, search recursively on the nodes in the range.
-        # lchild & rchild are the nodes containing the start and end of the
-        # range
-        left = self.get_child_for(start)
-        right = self.get_child_for(end)
-        lc, li = left if left else (None, -1)
-        rc, ri = right if right else (None, len(self.children))
+        results = sorted(self.linked_leaf.range_query(nranges))
+
+        # si & ei are the nodes containing the start and end of the range
+        enum_values = ((index, point[0][1]) for index, point in
+                enumerate(results))
+        si = next(idx for idx, val in enum_values if val >= start,
+                default=len(enum_values))
+        ei = next(idx for idx, val in enum_values if val > end,
+                default=len(enum_values))
 
         # We want to find all subtrees rooted between the two paths, and
         # recursively search those. Perform a (d-1)-dimensional query on the
@@ -73,13 +77,7 @@ class RangeLeaf(RangeNode):
         # the edge of the range (lchild and rchild).
         results = []
 
-        if left:
-            results.extend(lc.range_query(ranges))
-
-        if ri - li > 2:
-            results.extend(c.linked_tree.range_query(nranges)
-
-        if right and ri > li:
+        if ri > li:
             results.extend(rc.range_query(ranges))
 
         return results
