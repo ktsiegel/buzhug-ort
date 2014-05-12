@@ -105,7 +105,7 @@ def make_search_func(db,field,value):
 
     return _search
 
-def fast_select(db,names,**args):
+def fast_select(db, names, ort=False, **args):
     """
     Handles requests like select(['name'],age=23,name='pierre') when
     one of the arg keys is fixed length type; uses a fast search algo
@@ -114,13 +114,24 @@ def fast_select(db,names,**args):
     The search functions are defined for all fixed-length arguments and
     used to select a subset of record rows in field files
     """
+    # SW: only do range search if range tree exists
+    ort = ort and db.tree
+
     # fixed and variable length fields
-    f_args = [ (k,v) for k,v in args.iteritems() 
-        if hasattr(db._file[k],'block_len') ]
+    if ort:
+        f_args = [(k,v) for k,v in args.iteritems() 
+            if hasattr(db._file[k],'block_len') and not isinstance(value,(list,tuple))]
+        range_args = [ (k,v) for k,v in args.iteritems() 
+            if hasattr(db._file[k],'block_len') and isinstance(value,(list,tuple))]
+    else:
+        f_args = [(k,v) for k,v in args.iteritems() 
+            if hasattr(db._file[k],'block_len')]
+
     v_args = [ (k,v) for (k,v) in args.iteritems() 
         if not hasattr(db._file[k],'block_len') ]
     arg_names = [ k for k,v in f_args + v_args ]
     no_args = [ n for n in names if not n in arg_names ]
+    # names is all fields selected for, plus also fields part of query
     names = arg_names + no_args
 
     [ db._file[k].seek(0) for k in names + args.keys() ]
@@ -131,6 +142,14 @@ def fast_select(db,names,**args):
     fl_ranks = [] # absolute ranks in fixed length files
     bl_offset = 0 # offset of current chunck
     res = {}
+    
+    # TODO: get ranks matching range query first 
+    if ort:
+        tree = tree.RangeTree([], 0, self.tree_name)
+        range_ranks = tree.range_query(range_args)
+        # TODO: look up the field blocks if we're not storing data on the tree
+        # nodes 
+
     while True:
         buf = {}
         ranks = {}
@@ -148,6 +167,7 @@ def fast_select(db,names,**args):
         rank_set=set(ranks[f_args[0][0]].keys())
         if len(f_args)>1:
             for (k,v) in f_args[1:]:
+                # TODO: take an intersection with the range ranks
                 rank_set = rank_set.intersection(set(ranks[k].keys()))
         for c in rank_set:
             res[bl_offset+c] = [ ranks[k][c] for k,v in f_args ]
@@ -169,8 +189,10 @@ def fast_select(db,names,**args):
 
     for i,lines in enumerate(itertools.izip(*other_files)):
         try:
-            if i == fl_ranks[0]
+            if i == fl_ranks[0]:
                 fl_ranks.pop(0)
+                # SW: checks if all queried variable length values match this
+                # record
                 if lines[:nbvl] == vl_values:
                     res[i]+=list(lines)
                 else:

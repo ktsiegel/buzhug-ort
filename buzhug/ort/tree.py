@@ -1,4 +1,6 @@
+import os
 from node import *
+from serializer.base import Serializer
 
 class RangeTree(object):
     # Build a tree from a list of generic objects, represented as lists of (key,
@@ -6,8 +8,14 @@ class RangeTree(object):
     # maps to a comparable value. They should already be ordered. If they are
     # not, everything will fuck up. Don't make everything fuck up.
     # seq is the sequence of keys in the first item of the list of data.
-    def __init__(self, data, B):
+    def __init__(self, data, B, filename):
         self.B = B
+        self.serializer = Serializer(filename)
+        # root will have an offset of 0
+        root = self.serializer.deserialize_node()
+        if root != None:
+            return
+
         self.build_tree(data)
 
         # If the sequence of keys is not the same in every other data item
