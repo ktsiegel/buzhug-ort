@@ -17,7 +17,7 @@ def build_test():
     serializer = LineSerializer(tree_file)
 
     root1 = tree.build_tree(data, 3, serializer)
-    root2 = serializer.loads(root1.linked_node) 
+    root2 = serializer.loads(root1.linked_node)
     root3 = serializer.loads(root2.linked_node)
 
     dim1 = [data_item[1] for data_item in
@@ -28,9 +28,9 @@ def build_test():
             sorted((data_item[2] for data_item in data), key=lambda d: d[1])]
 
     # make sure all the roots have all values at bottom
-    assert len(root1.get_all_data()) == len(data) 
-    assert len(root2.get_all_data()) == len(data) 
-    assert len(root3.get_all_data()) == len(data) 
+    assert len(root1.get_all_data()) == len(data)
+    assert len(root2.get_all_data()) == len(data)
+    assert len(root3.get_all_data()) == len(data)
 
     for root, dim in zip([root1, root2, root3], [dim1, dim2, dim3]):
         root_children = [root.load_child(child) for child in root.children]
@@ -54,3 +54,36 @@ def build_test():
                     root_grandchildren[i - 1].pos
 
     print serializer.back_seeks
+
+def search_test():
+    data = []
+    B = 10
+    num_query = 10**2
+    num_items = 10**5
+
+    for i in range(num_items):
+        item = [(dimension, random.randrange(-1000, 1000))
+                for dimension in ['x', 'y', 'z']]
+        data.append(item)
+
+    tree_file = 'test-tree-2'
+    if os.path.isfile(tree_file):
+        os.remove(tree_file)
+    serializer = LineSerializer(tree_file)
+
+    root = tree.build_tree(data, B, serializer)
+    root2 = serializer.loads(root.linked_node)
+    root3 = serializer.loads(root2.linked_node)
+
+    ranges = []
+    start = time.time()
+    for i in range(num_query):
+        ranges = {d: (random.randrange(-1000, 1000),
+                     random.randrange(-1000, 1000))
+                    for d in ['x', 'y', 'z']}
+        root.range_query(ranges)
+
+    total = time.time() - start
+    print num_query, 'queries on', num_items, 'items took', total, 'seconds'
+
+    assert False

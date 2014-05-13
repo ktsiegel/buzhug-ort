@@ -52,38 +52,11 @@ class RangeNode(object):
         child = self.children[index]
         return (index, child)
 
-    # Get all the data in a range of values. Deprecated.
-    '''
-    def get_range_data_old(self, start, end):
-        # Get the index of the child containing the end key, or note that it's
-        # out of our range.
-        si = self.get_child_for(start)[0] if start >= self.min \
-                else -1
-        ei = self.get_child_for(end)[0] if end >= self.max \
-                else len(self.children)
+    # Returns all data in the tree. Not used except for debugging.
+    def get_all_data(self):
+        return get_range_data(self.min - 1, self.max + 1)
 
-        data = []
-
-        # First, recurse on the child containing the end key.
-        if ei > si:
-            child = self.load_child(self.children[i])
-            data.extend(self.children[ei].get_range_data(start, end))
-
-        # Next, grab everything from all the children in between start & end.
-        if ei >= si + 2:
-            for i in reversed(xrange(si + 1, ei)):
-                child = self.load_child(self.children[i])
-                data.extend(child.get_all_data())
-
-        # Recurse on the child containing the start key.
-        if si >= 0:
-            child = self.load_child(self.children[si])
-            data.extend(self.children[si].get_range_data(start, end))
-
-        return data
-    '''
-
-    # Get all the data in a range of values. A generalization of get_all_data.
+    # Get all the data in a range of values.
     def get_range_data(self, start, end):
         # Get the index of the child containing the end key, or note that it's
         # out of our range.
