@@ -58,7 +58,6 @@ def build_upwards(data, B, NodeClass, serializer,
     # if this is the lowest level, sort by keys and set the children
     if is_leaf:
         data.sort(key=lambda dp: dp[0][1])
-        print data
         # set starts and ends for each child
         # a child is in the form: (child_data, start, end)
         # child_data is (value, id)
@@ -104,7 +103,6 @@ def build_upwards(data, B, NodeClass, serializer,
         else:
             parent = NodeClass(cluster, linked_root, dim, serializer)
 
-        print parent 
         # then serialize parent
         serializer.dumps(parent)
 

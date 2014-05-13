@@ -23,5 +23,7 @@ def build_test():
     assert len(root.get_all_data()) == len(data) 
     assert len(root2.get_all_data()) == len(data) 
     assert len(root3.get_all_data()) == len(data) 
+
+    print root.children
     
     assert False 
