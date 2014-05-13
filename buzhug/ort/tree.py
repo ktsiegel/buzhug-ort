@@ -88,7 +88,7 @@ def build_upwards(data, B, NodeClass, serializer, children=None, first_dim=False
             linked_data = [data_item[1:] for data_item in data[cluster_start : cluster_end]]
             linked_root = build_upwards(linked_data, B, RangeLeaf, serializer)
 
-        # if we're at the bottom of the first tree, pass in the full data item 
+        # if we're at the bottom of the first tree, pass in the full data item
         if first_dim and is_leaf:
             parent = NodeClass(cluster, B, linked_root, data[cluster_start : cluster_end])
         else:

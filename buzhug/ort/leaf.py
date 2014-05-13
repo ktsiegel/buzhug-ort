@@ -56,9 +56,9 @@ class RangeLeaf(RangeNode):
         # We want to recurse down to the last dimension, and return everything
         # that fits all the ranges. Perform a (d-1)-dimensional query on our
         # linked leaf, and return the union of that result and our range.
-        their_results = set(r['id'] for r in self.linked_leaf.range_query(nranges))
-        my_results = self.get_range_data(start,'] end)
+        their_results = self.linked_leaf.range_query(nranges)
+        my_indices = set(i[-1] for i in self.get_range_data(start, end))
 
-        # Check each one of our results to see if it's in the lower levels.
-        # TODO: This could probably be faster.
-        return = [r for r in my_results if r[-1] in their_results]
+        # Check each one of the lower level's results to see if it's included in
+        # our range.
+        return [r for r in their_results if r[-1] in my_indices]

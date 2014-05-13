@@ -41,8 +41,8 @@ class RangeNode(object):
 
     # TODO: This should fetch the next child from disk and deserialize it. Use
     # only as necessary.
-    def load_child(self, pointer):
-        return api.load_child(pointer[0])
+    def load_child(self, (pointer, min, max)):
+        return self.serializer.loads(pointer)
 
     # Make this node into a file for storage - TODO
     def serialize(self):
@@ -89,15 +89,18 @@ class RangeNode(object):
 
         # First, recurse on the child containing the start key.
         if si >= 0:
+            child = self.load_child(self.children[si])
             data.extend(self.children[si].get_range_data(start, end))
 
         # Next, grab everything from all the children in between start & end.
         if ei >= si + 2:
             for i in range(si + 1, ei):
-                data.extend(self.children[i].get_all_data())
+                child = self.load_child(self.children[i])
+                data.extend(child.get_all_data())
 
         # Recurse on the child containing the end key.
         if ei > si:
+            child = self.load_child(self.children[i])
             data.extend(self.children[ei].get_range_data(start, end))
 
         return data
@@ -126,8 +129,8 @@ class RangeNode(object):
             return self.get_range_data(start, end)
 
         # Otherwise, search recursively on the nodes in the range.
-        # lchild & rchild are the nodes containing the start and end of the
-        # range
+        # start_child & end_child are the nodes containing the start and end of
+        # the range
         start_child = self.get_child_for(start)
         end_child = self.get_child_for(end)
         si, sc = start_child if start_child else (-1, None)
@@ -138,25 +141,25 @@ class RangeNode(object):
         # linked trees of all of this node's children completely within the
         # range, and perform the same d-dimensional query on the nodes at
         # the edge of the range (lchild and rchild).
-        res = [[]] * 3
+        first, middle, last = ([], [], [])
 
         # First, get the results from all children fully contained in the range
         if ei - si >= 2:
             for i in range(si, ei):
                 c = self.load_child(self.children[i])
-                res[1].extend(c.link().range_query(nranges))
+                middle.extend(c.link().range_query(nranges))
 
         # Get the results from the child containing the start of the range
         if start_child:
             c = self.load_child(sc)
-            res[0] = c.range_query(ranges)
+            first = c.range_query(ranges)
 
         # Recurse on child containing end of range
         if end_child and ei > si:
             c = self.load_child(ec)
-            res[2] = c.range_query(ranges)
+            last = c.range_query(ranges)
 
         # join the lists
-        res[0].extend(res[1])
-        res[0].extend(res[2])
+        first.extend(middle)
+        first.extend(last)
         return res[0]
