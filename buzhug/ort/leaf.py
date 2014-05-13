@@ -28,9 +28,8 @@ class RangeLeaf(RangeNode):
             del out[key]
         return out
 
-    # Return everything.
-    def get_all_data(self):
-        return self.data
+    def link(self):
+        return self.serializer.loads(self.linked_leaf)
 
     # Get the indices of data points bounded by the start and end values in the
     # first dimension.
