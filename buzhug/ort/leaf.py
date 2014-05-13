@@ -3,13 +3,14 @@ from node import RangeNode
 class RangeLeaf(RangeNode):
 
     # Initialize a leaf with a *sorted* set of data points
-    def __init__(self, data, linked_leaf, dim, full_data=None):
+    def __init__(self, data, linked_leaf, dim, prev, full_data=None):
         # [(id, value), ..., ]
         self.data = data
         self.dimension = dim
         self.linked_leaf = linked_leaf
         self.full_data = full_data
         self.build()
+        self.prev = prev
 
     def build(self):
         self.min = min(data_item[1] for data_item in self.data)

@@ -73,6 +73,7 @@ def build_upwards(data, B, NodeClass, serializer,
 
     # data[0][0][0] is the dimension name unfortunately...
     dim = data[0][0][0]
+    prev_leaf = None
     for i in range(num_clusters):
         # If there is more than one parent's worth of children, chop
         # off the first B in a chunk
@@ -96,15 +97,18 @@ def build_upwards(data, B, NodeClass, serializer,
         if is_leaf:
             # if we're at the bottom of the last tree, pass in the full data item
             if len(data[0]) == 2:
-                parent = NodeClass(cluster, linked_root, dim, data[cluster_start :
-                    cluster_end])
+                parent = NodeClass(cluster, linked_root, dim, prev_leaf,
+                        data[cluster_start : cluster_end])
             else:
-                parent = NodeClass(cluster, linked_root, dim)
+                parent = NodeClass(cluster, linked_root, dim, prev_leaf)
         else:
             parent = NodeClass(cluster, linked_root, dim, serializer)
 
         # then serialize parent
         serializer.dumps(parent)
+
+        if is_leaf:
+            prev_leaf = parent.pos
 
         # and add it to our collection
         parents.append((parent.pos, parent.min, parent.max))
