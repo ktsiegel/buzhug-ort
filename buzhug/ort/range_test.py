@@ -1,5 +1,5 @@
 import os
-import tree 
+import tree
 from serializer.line_serializer import LineSerializer
 
 def build_test():
@@ -12,6 +12,8 @@ def build_test():
     tree_file = 'test-tree'
     if os.path.isfile(tree_file):
         os.remove(tree_file)
-    serializer = LineSerializer(tree_file) 
+    serializer = LineSerializer(tree_file)
 
-    root = tree.build_tree(data, 2, serializer)
+    root = tree.build_tree(data, 3, serializer)
+    print root
+    raise Exception

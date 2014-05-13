@@ -22,6 +22,7 @@ def build_tree(data, B, serializer):
     # last element of each data item is now a unique id for the record
     [data_item.sort(key=lambda field: field[0]) for data_item in data]
     data = [data_item + [i] for i, data_item in enumerate(data)]
+
     # If the sequence of keys is not the same in every other data item
     # as well, you fucked up. We make it immutable just to be safe.
     seq = tuple(d[0] for d in data[0][:-1])
@@ -76,20 +77,11 @@ def build_upwards(data, B, NodeClass, serializer,
         # If there is more than one parent's worth of children, chop
         # off the first B in a chunk
         cluster = children[i * B:(i + 1) * B]
-<<<<<<< Updated upstream
         cluster_start = i * B
         cluster_end = i * B + len(cluster)
         if not is_leaf:
             cluster_start = children_intervals[cluster_start][0]
             cluster_end = children_intervals[cluster_end - 1][1]
-=======
-        if is_leaf:
-            cluster_start = i * B
-            cluster_end = (i + 1) * B
-        else:
-            cluster_start = children_intervals[i * B][0]
-            cluster_end = children_intervals[(i + 1) * B - 1][1]
->>>>>>> Stashed changes
 
         # serialize parent's linked tree in next dimension
         linked_root = None
@@ -109,11 +101,7 @@ def build_upwards(data, B, NodeClass, serializer,
             else:
                 parent = NodeClass(cluster, linked_root, dim)
         else:
-<<<<<<< Updated upstream
             parent = NodeClass(cluster, linked_root, dim, serializer)
-=======
-            parent = NodeClass(cluster, B, linked_root, dim, serializer)
->>>>>>> Stashed changes
 
         # then serialize parent
         serializer.dumps(parent)
@@ -130,10 +118,3 @@ def build_upwards(data, B, NodeClass, serializer,
         return build_upwards(data, B, RangeNode, serializer, parents, parent_intervals)
 
     return parents[0][0]
-
-if __name__ == '__main__':
-    data = [[(i, random.random()) for i in ['x', 'y', 'z']] for j in
-            range(10**6)]
-    B = 100
-    tree = build_tree(data, B)
-    print tree
