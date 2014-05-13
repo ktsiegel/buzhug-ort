@@ -146,7 +146,9 @@ class Serializer:
                 self.back_seeks += 1
             self._seek(position)
             self.pos = position
-            nodes.append(self._load_node())
+            node = self._load_node()
+            node.serializer = self
+            nodes.append(node)
         return nodes
 
     def loads(self, position):

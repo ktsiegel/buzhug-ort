@@ -40,7 +40,9 @@ def basic_flush_test():
     serialized = s.loads(node1.pos)
     print serialized.__dict__
     assert serialized.min == 10
+    assert serialized.serializer == s
 
     serialized = s.loads(node2.pos)
     assert serialized.max == 100
+    assert serialized.serializer == s
 
