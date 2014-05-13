@@ -22,7 +22,7 @@ def build_tree(data, B, serializer, first_dim=False):
     # sort the fieldnames in each data item before doing field checks
     # last element of each data item is now a unique id for the record
     data = [data_item.sort(key=lambda field: field[0]) + [i] for i, data_item
-            in enumerate(data)]    
+            in enumerate(data)]
     # If the sequence of keys is not the same in every other data item
     # as well, you fucked up. We make it immutable just to be safe.
     seq = tuple(d[0] for d in data[0][:-1])
@@ -64,6 +64,7 @@ def build_upwards(data, B, NodeClass, serializer, children=None, first_dim=False
     num_clusters = len(children) / B
     if len(children) % B != 0:
         num_clusters += 1
+
     for i in range(num_clusters)
         # If there is more than one parent's worth of children, chop
         # off the first B in a chunk
