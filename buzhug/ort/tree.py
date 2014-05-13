@@ -52,13 +52,18 @@ def build_upwards(data, B, NodeClass, serializer, children=None, first_dim=False
             - parent
         then recurse with the parents as the children of next level
     """
+    is_leaf = NodeClass == RangeLeaf
     # if this is the lowest level, sort by keys and set the children
-    if NodeClass == RangeLeaf:
+    if is_leaf:
         data.sort(key=lambda dp: dp[0][1])
         # set starts and ends for each child
-        # if we're at the leaves, the start and end for a node is just its
-        # index, index + 1
-        children = [(data_item, i, i + 1) for i, data_item in enumerate(data)]
+        # a child is in the form: (child_data, start, end)
+        # child_data is (field, value, id)
+        # start and end are indices into the larger data list
+        children = [(
+            (data_item[0][0], data_item[0][1], data_item[-1]),
+            i, i + 1
+            ) for i, data_item in enumerate(data)]
     parents = []
 
     num_clusters = len(children) / B
@@ -68,9 +73,9 @@ def build_upwards(data, B, NodeClass, serializer, children=None, first_dim=False
         # If there is more than one parent's worth of children, chop
         # off the first B in a chunk
         # TODO: this is a tuple...
-        cluster = children[i * B:(i + 1) * B]
-        cluster_start = cluster[0].start
-        cluster_end = cluster[-1].end
+        cluster = [child[0] for child in children[i * B:(i + 1) * B]]
+        cluster_start = cluster[i * B][1]
+        cluster_end = cluster[(i + 1) * B - 1][2]
 
         # serialize parent's linked tree in next dimension
         linked_root = None
@@ -81,7 +86,12 @@ def build_upwards(data, B, NodeClass, serializer, children=None, first_dim=False
             # TODO: take only the data items corresponding to these children
             linked_data = [data_item[1:] for data_item in data[cluster_start : cluster_end]]
             linked_root = build_upwards(linked_data, B, RangeLeaf, serializer)
-        parent = NodeClass(cluster, B, linked_root)
+
+        # if we're at the bottom of the first tree, pass in the full data item 
+        if first_dim and is_leaf:
+            parent = NodeClass(cluster, B, linked_root, data[cluster_start : cluster_end])
+        else:
+            parent = NodeClass(cluster, B, linked_root)
 
         # then serialize parent
         serializer.dumps(parent)
