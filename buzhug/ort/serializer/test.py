@@ -23,10 +23,10 @@ def basic_flush_test():
 
     # nodes get written backwards after flush, so on disk it's actually
     # [node2, node1]
-    serialized = s.loads_single(node1.pos)
+    serialized = s.loads(node1.pos)
     assert serialized.min == 10
 
-    serialized = s.loads_single(node2.pos)
+    serialized = s.loads(node2.pos)
     assert serialized.max == 100
 
     assert s.back_seeks == 1
@@ -37,10 +37,10 @@ def basic_flush_test():
     # serializer from a tree file that's already built
     s = serializer(tree_file)
 
-    serialized = s.loads_single(node1.pos)
+    serialized = s.loads(node1.pos)
     print serialized.__dict__
     assert serialized.min == 10
 
-    serialized = s.loads_single(node2.pos)
+    serialized = s.loads(node2.pos)
     assert serialized.max == 100
 

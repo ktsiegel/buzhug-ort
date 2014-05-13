@@ -127,7 +127,7 @@ class Serializer:
         """
         self.f.close()
 
-    def loads(self, positions):
+    def loads_many(self, positions):
         """
         In write mode, api call to load the nodes at a list of positions
         """
@@ -146,8 +146,8 @@ class Serializer:
             nodes.append(self._load_node())
         return nodes
 
-    def loads_single(self, position):
-        return self.loads([position])[0]
+    def loads(self, position):
+        return self.loads_many([position])[0]
 
 
     """
