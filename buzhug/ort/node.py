@@ -1,14 +1,16 @@
 from tree import build_tree
 
 class RangeNode(object):
-    def __init__(self, children, B):
-        # This points to the node's children in the tree - each child is
-        # represented as a (pointer, min, max) tuple.
+
+    def __init__(self, children, B, linked_node, dim):
+        # children is a sorted list of the node's children in the tree - each
+        # child is represented as a (pointer, min, max) tuple.
         self.children = children
-        self.dimension = None
+        self.dimension = dim
         self.min = children[0][1]
         self.max = children[-1][2]
         self.B = B
+        self.linked_node = linked_node
 
         # This stores values for all of the node's children except for the
         # smallest one. This allows searching for a child quickly with >=
@@ -19,6 +21,7 @@ class RangeNode(object):
         # linked_node.  We generate it by passing all of our data into a new
         # RangeTree object.  First, though, we have to re-order the dimensions
         # so that the next level sorts by the correct key.
+        '''
         new_data = []
         for item in self.get_data():
             # stick the first data item in the back, and we're good
@@ -28,11 +31,10 @@ class RangeNode(object):
             # might as well set our dimension while we're at it
             if not self.dimension:
                 self.dimension = item[0][0]
-
-        # Next-level shit
-        self.linked_node = build_tree(new_data, B)
+        '''
 
     # Return a string representing this node for printing.
+    # TODO: Figure out how this worked, and make it work again
     def __repr__(self):
         name = getattr(self, "children", 0) and "Branch" or "Leaf"
         return "<%s %s>" % (name, ", ".join(map(str, self.values)))
@@ -60,14 +62,6 @@ class RangeNode(object):
 
         child = self.children[index]
         return (index, child)
-
-    # Recursively chain get_child_for commands to make a path
-    # TODO: This is never used, keeping it around because
-    def get_path(self, key):
-        next_c = get_child_for(self, key)
-        if next_c:
-            child = self.load_child(next_c[1])
-            return [next_c] + child.get_path(key)
 
     # Enumerate all the data in the node's children, in order.
     def get_all_data(self):
@@ -150,10 +144,9 @@ class RangeNode(object):
         if ei - si >= 2:
             for i in range(si, ei):
                 c = self.load_child(self.children[i])
-                res[1].extend(c.linked_node.range_query(nranges))
+                res[1].extend(c.link().range_query(nranges))
 
-        # Get the results of the query from the child containing the start of
-        # the range
+        # Get the results from the child containing the start of the range
         if start_child:
             c = self.load_child(sc)
             res[0] = c.range_query(ranges)

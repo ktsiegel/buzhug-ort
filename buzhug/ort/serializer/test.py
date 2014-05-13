@@ -1,7 +1,7 @@
 import os
 
 from line_serializer import LineSerializer
-from node_class import Node 
+from node_class import Node
 
 serializer = LineSerializer
 
@@ -12,12 +12,12 @@ def basic_flush_test():
     if os.path.isfile(tree_file):
         os.remove(tree_file)
 
-    s = serializer(tree_file) 
+    s = serializer(tree_file)
     node1 = Node(s, **{'min' : 10})
     node2 = Node(s, **{'max' : 100})
     s.dumps([node1, node2])
     s.flush()
-    
+
     assert node1.pos == 0
     assert node2.pos == 1
 
