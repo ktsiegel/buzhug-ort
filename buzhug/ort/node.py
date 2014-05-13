@@ -2,25 +2,38 @@ class RangeNode(object):
 
     # children is a sorted list of the node's children in the tree - each
     # child is represented as a (pointer, min, max) tuple.
-    def __init__(self, children, B, linked_node, dim, serializer):
+    def __init__(self, children, linked_node, dim, serializer):
         self.children = children
         self.dimension = dim
-        self.min = children[0][1]
-        self.max = children[-1][2]
-        self.B = B
         self.linked_node = linked_node
         self.serializer = serializer
+        self.build()
+
+    def build(self):
+        self.min = self.children[0][1]
+        self.max = self.children[-1][2]
 
         # This stores values for all of the node's children except for the
         # smallest one. This allows searching for a child quickly with >=
         # comparisons.
-        self.values = [child[0] for child in children[1:]]
+        self.values = [child[0] for child in self.children[1:]]
 
     # Return a string representing this node for printing.
     # TODO: Figure out how this worked, and make it work again
     def __repr__(self):
         name = getattr(self, "children", 0) and "Branch" or "Leaf"
         return "<%s %s>" % (name, ", ".join(map(str, self.values)))
+
+    def __setstate__(self, dict):
+        self.__dict__.update(dict)
+        self.build()
+
+    def __getstate__(self):
+        out = self.__dict__.copy()
+        tdel = ['max', 'min', 'serializer', 'values']
+        for key in tdel:
+            del out[key]
+        return out
 
     # Fetch the next child from disk and deserialize it. Use only as necessary.
     def load_child(self, (pointer, min, max)):

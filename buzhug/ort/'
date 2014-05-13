@@ -7,13 +7,14 @@ class RangeLeaf(RangeNode):
         # [(value, id), ..., ]
         self.data = data
         self.dimension = dim
+        self.min = min(data, key=lambda d: d[1])
+        self.max = max(data, key=lambda d: d[1])
         self.linked_leaf = linked_leaf
         self.full_data = full_data
-        self.build()
 
     def build(self):
-        self.min = min(self.data, key=lambda d: d[1])
-        self.max = max(self.data, key=lambda d: d[1])
+        self.min = children[0][1]
+        self.max = children[-1][2]
 
     def __getstate__(self):
         out = self.__dict__.copy()
