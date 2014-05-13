@@ -4,7 +4,7 @@ class RangeLeaf(RangeNode):
 
     # Initialize a leaf with a *sorted* set of data points
     def __init__(self, data, linked_leaf, dim, full_data=None):
-        # [(value, id), ..., ]
+        # [(id, value), ..., ]
         self.data = data
         self.dimension = dim
         self.linked_leaf = linked_leaf
@@ -12,8 +12,8 @@ class RangeLeaf(RangeNode):
         self.build()
 
     def build(self):
-        self.min = min(self.data, key=lambda d: d[1])
-        self.max = max(self.data, key=lambda d: d[1])
+        self.min = min(self.data, key=lambda d: d[0])[0]
+        self.max = max(self.data, key=lambda d: d[0])[0]
 
     # Return a string representing this node for printing.
     def __repr__(self):
