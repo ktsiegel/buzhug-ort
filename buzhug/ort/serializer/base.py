@@ -11,7 +11,7 @@ import os
 
 class Serializer:
 
-    def __init__(self, filename, node_class):
+    def __init__(self, filename):
         """
         Two modes: writing, then reading
 
@@ -22,8 +22,9 @@ class Serializer:
         existing tree file, allow api calls to load lists of node block
         positions in the tree file. No more writes allowed after this time
         """
+        # TODO: consider passing in a node class?
+
         self.filename = filename
-        self.node_class = node_class
         
         self.read_mode = False
         self.pos = 0
@@ -145,6 +146,9 @@ class Serializer:
             nodes.append(self._load_node())
         return nodes
 
+    def loads_single(self, position):
+        return self.loads([position])[0]
+
 
     """
     Methods defined by different serialization methods - must override these in Serializer
@@ -152,7 +156,7 @@ class Serializer:
     """
     def _dump_node(self, node):
         """
-        In append mode, given an instance of self.node_class, serialize it and
+        In append mode, given an instance of a node, serialize it and
         return string 
         """
         return "" 

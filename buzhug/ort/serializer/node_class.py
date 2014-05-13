@@ -16,6 +16,10 @@ class Node:
         pointers = [self.children_pointers[index] for index in indices]
         return serializer.loads(pointers)
 
+    """
+    We need these methods for cPickle...they'll probably be useful for struct
+    packing/unpacking as well
+    """
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['serializer']
