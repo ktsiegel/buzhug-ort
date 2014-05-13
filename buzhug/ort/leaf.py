@@ -3,14 +3,14 @@ from node import RangeNode
 class RangeLeaf(RangeNode):
 
     # Initialize a leaf with a *sorted* set of data points
-    def __init__(self, data, linked_leaf, dim, prev, full_data=None):
+    def __init__(self, data, linked_node, dim, prev, full_data=None):
         # [(id, value), ..., ]
         self.data = data
         self.dimension = dim
-        self.linked_leaf = linked_leaf
+        self.linked_node = linked_node
         self.full_data = full_data
-        self.build()
         self.prev = prev
+        self.build()
 
     def build(self):
         self.min = min(data_item[1] for data_item in self.data)
@@ -29,10 +29,13 @@ class RangeLeaf(RangeNode):
         return out
 
     def link(self):
-        return self.serializer.loads(self.linked_leaf)
+        return self.serializer.loads(self.linked_node)
 
     def load_prev(self):
-        return self.serializer.loads(self.prev)
+        if self.prev:
+            return self.serializer.loads(self.prev)
+        else:
+            return None
 
     # Get all data in the specified range - recurse on the previous leaf if this
     # one doesn't have the start value in its range.
@@ -40,9 +43,9 @@ class RangeLeaf(RangeNode):
         # Figure out how much of our data falls in the given range.
         enum_values = enumerate(self.data)
         si = next((idx for idx, val in enum_values if val >= start),
-                default=len(enum_values))
+                  len(self.data))
         ei = next((idx for idx, val in enum_values if val > end),
-                default=len(enum_values))
+                  len(self.data))
 
         # Get our slice of the data.
         if self.full_data:
@@ -51,9 +54,9 @@ class RangeLeaf(RangeNode):
             data = self.data[si:ei]
 
         # Either return what we have, or recurse on our predecessor node.
-        if start > self.min or not recurse:
-            return data
-        return self.load_prev().get_range_data(start, end).extend(data)
+        if recurse and start <= self.min and self.prev:
+            return self.load_prev().get_range_data(start, end).extend(data)
+        return data
 
     # Return everything in this leaf for the specified ranges
     def range_query(self, ranges):
@@ -62,7 +65,7 @@ class RangeLeaf(RangeNode):
             (start, end) = ranges[self.dimension]
         else:
             # If there is no key in our dimension, go to the next-level leaf
-            return self.linked_leaf.range_query(ranges)
+            return self.link().range_query(ranges)
 
         # The query in the next dimension includes all ranges minus this one.
         nranges = ranges.copy()

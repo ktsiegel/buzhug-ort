@@ -38,6 +38,9 @@ class RangeNode(object):
     def load_child(self, (pointer, min, max)):
         return self.serializer.loads(pointer)
 
+    def link(self):
+        return self.serializer.loads(self.linked_node)
+
     # Return the child which contains the leaf keyed by "key." return value is a
     # (child, index) tuple; "index" is child's position in values, & child is a
     # (ptr, min, max) tuple. If key is out of our range, return None.
@@ -47,21 +50,26 @@ class RangeNode(object):
 
         # Get index for the first child whose minimum value is greater than key.
         index = next((idx for idx, val in enumerate(self.values) if val >= key),
-                default=len(self.values))
+                     len(self.values))
 
         child = self.children[index]
         return (index, child)
 
     # Returns all data in the tree. Not used except for debugging.
     def get_all_data(self):
-        return get_range_data(self.min - 1, self.max + 1)
+        return self.get_range_data(self.min - 1, self.max + 1)
 
     # Get all the data in a range of values.
     def get_range_data(self, start, end):
+        if start > self.max or end < self.min:
+            return []
+
         # Get the index of the child containing the end key, or note that it's
         # out of our range.
-        idx = self.get_child_for(end)[0] if end >= self.max \
-                else len(self.children)
+        if end > self.max:
+            idx = -1
+        else:
+            idx = self.get_child_for(end)[0]
 
         # Recurse on the child containing the end key.
         child = self.load_child(self.children[idx])
@@ -77,7 +85,7 @@ class RangeNode(object):
             (start, end) = ranges[self.dimension]
         else:
             # If there is no key in our dimension, go to the next tree
-            return self.linked_node.range_query(ranges)
+            return self.link().range_query(ranges)
 
         # If the next dimension is ours, search this tree. Otherwise move on to
         # the next dimension's tree and continue. The query in the next

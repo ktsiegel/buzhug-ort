@@ -1,6 +1,6 @@
 import os
 import random
-
+import time
 import tree
 from serializer.line_serializer import LineSerializer
 
@@ -17,8 +17,8 @@ def build_test():
     serializer = LineSerializer(tree_file)
 
     root1 = tree.build_tree(data, 3, serializer)
-    root2 = serializer.loads(root1.linked_node)
-    root3 = serializer.loads(root2.linked_node)
+    root2 = root1.link()
+    root3 = root2.link()
 
     dim1 = [data_item[1] for data_item in
             sorted((data_item[0] for data_item in data), key=lambda d: d[1])]
@@ -59,7 +59,7 @@ def search_test():
     data = []
     B = 10
     num_query = 10**2
-    num_items = 10**5
+    num_items = 10**4
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
