@@ -103,8 +103,7 @@ def build_upwards(data, B, NodeClass, serializer, children=None, first_dim=False
         i += 1
 
     # If we ended up with more than one parent, we need to give them
-    # their own parents.
-    # R E C U R S E
+    # their own parents. Recurse.
     if len(parents) > 1:
         # On the recursive steps, the parents are always RangeNodes.
         return build_upwards(data, B, RangeNode, serializer, parents)

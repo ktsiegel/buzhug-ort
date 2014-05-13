@@ -4,10 +4,10 @@ from tree import build_tree
 class RangeLeaf(RangeNode):
 
     # Initialize a leaf with a *sorted* set of data points
-    def __init__(self, data, B, linked_leaf, full_data=None):
-        # [(dim2, val2, id), ..., ]
+    def __init__(self, data, B, linked_leaf, dim, full_data=None):
+        # [(value, id), ..., ]
         self.data = data
-        self.dimension = data[0][0]
+        self.dimension = dim
         self.min = min(data, key=lambda d: d[1])
         self.max = max(data, key=lambda d: d[1])
         self.B = B
@@ -30,6 +30,8 @@ class RangeLeaf(RangeNode):
         ei = next(idx for idx, val in enum_values if val > end,
                 default=len(enum_values))
 
+        if self.full_data:
+            return self.full_data[si:ei]
         return self.data[si:ei]
 
     # Return everything in this leaf for the specified ranges

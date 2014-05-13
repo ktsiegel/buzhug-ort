@@ -2,36 +2,21 @@ from tree import build_tree
 
 class RangeNode(object):
 
-    def __init__(self, children, B, linked_node, dim):
-        # children is a sorted list of the node's children in the tree - each
-        # child is represented as a (pointer, min, max) tuple.
+    # children is a sorted list of the node's children in the tree - each
+    # child is represented as a (pointer, min, max) tuple.
+    def __init__(self, children, B, linked_node, dim, serializer):
         self.children = children
         self.dimension = dim
         self.min = children[0][1]
         self.max = children[-1][2]
         self.B = B
         self.linked_node = linked_node
+        self.serializer = serializer
 
         # This stores values for all of the node's children except for the
         # smallest one. This allows searching for a child quickly with >=
         # comparisons.
         self.values = [child[0] for child in children[1:]]
-
-        # Now we make the tree this node links to in the next dimension,
-        # linked_node.  We generate it by passing all of our data into a new
-        # RangeTree object.  First, though, we have to re-order the dimensions
-        # so that the next level sorts by the correct key.
-        '''
-        new_data = []
-        for item in self.get_data():
-            # stick the first data item in the back, and we're good
-            ni = item[:]
-            ni.append(ni.pop(0))
-            new_data.append(ni)
-            # might as well set our dimension while we're at it
-            if not self.dimension:
-                self.dimension = item[0][0]
-        '''
 
     # Return a string representing this node for printing.
     # TODO: Figure out how this worked, and make it work again
@@ -39,24 +24,18 @@ class RangeNode(object):
         name = getattr(self, "children", 0) and "Branch" or "Leaf"
         return "<%s %s>" % (name, ", ".join(map(str, self.values)))
 
-    # TODO: This should fetch the next child from disk and deserialize it. Use
-    # only as necessary.
+    # Fetch the next child from disk and deserialize it. Use only as necessary.
     def load_child(self, (pointer, min, max)):
         return self.serializer.loads(pointer)
 
-    # Make this node into a file for storage - TODO
-    def serialize(self):
-        pass
-
-    # Return POINTER to the child which contains the leaf keyed by "key." return
-    # value is a (child, index) tuple; "index" is child's position in values.
-    # If key is out of our range, return None.
+    # Return the child which contains the leaf keyed by "key." return value is a
+    # (child, index) tuple; "index" is child's position in values, & child is a
+    # (ptr, min, max) tuple. If key is out of our range, return None.
     def get_child_for(self, key):
         if key < self.min or key > self.max:
             return None
 
-        # We want the index of the first child whose minimum value is greater
-        # than key.
+        # Get index for the first child whose minimum value is greater than key.
         index = next(idx for idx, val in enumerate(self.values) if val >= key,
                 default=len(self.values))
 
@@ -66,12 +45,13 @@ class RangeNode(object):
     # Enumerate all the data in the node's children, in order.
     def get_all_data(self):
         data = []
-        for c in self.children:
+        # traverse in reverse order, because that's how their laid out on disk
+        for c in reversed(self.children):
             # Now we actually need to load into memory
             child = self.load_child(c)
             data.extend(child.get_all_data())
 
-        # possible optimization:
+        # Possible optimization:
         # data = map(RangeNode.get_all_data, children)
 
         return data
@@ -87,21 +67,21 @@ class RangeNode(object):
 
         data = []
 
-        # First, recurse on the child containing the start key.
-        if si >= 0:
-            child = self.load_child(self.children[si])
-            data.extend(self.children[si].get_range_data(start, end))
-
-        # Next, grab everything from all the children in between start & end.
-        if ei >= si + 2:
-            for i in range(si + 1, ei):
-                child = self.load_child(self.children[i])
-                data.extend(child.get_all_data())
-
-        # Recurse on the child containing the end key.
+        # First, recurse on the child containing the end key.
         if ei > si:
             child = self.load_child(self.children[i])
             data.extend(self.children[ei].get_range_data(start, end))
+
+        # Next, grab everything from all the children in between start & end.
+        if ei >= si + 2:
+            for i in reversed(xrange(si + 1, ei)):
+                child = self.load_child(self.children[i])
+                data.extend(child.get_all_data())
+
+        # Recurse on the child containing the start key.
+        if si >= 0:
+            child = self.load_child(self.children[si])
+            data.extend(self.children[si].get_range_data(start, end))
 
         return data
 
@@ -118,14 +98,14 @@ class RangeNode(object):
             return self.linked_node.range_query(ranges)
 
         # If the next dimension is ours, search this tree. Otherwise move on to
-        # the next dimension's tree and continue.
-        # The query in the next dimension is everything other than this one.
+        # the next dimension's tree and continue. The query in the next
+        # dimension is everything other than this one.
         nranges = ranges.copy()
         del nranges[self.dimension]
 
-        # The base case: there are no other dimensions to query, so return
-        # all nodes in the range.
-        if not nranges:
+        # The base case: this tree is in the last dimension, so return all nodes
+        # in the range.
+        if not self.linked_node:
             return self.get_range_data(start, end)
 
         # Otherwise, search recursively on the nodes in the range.
@@ -141,25 +121,25 @@ class RangeNode(object):
         # linked trees of all of this node's children completely within the
         # range, and perform the same d-dimensional query on the nodes at
         # the edge of the range (lchild and rchild).
-        first, middle, last = ([], [], [])
+        results = []
 
-        # First, get the results from all children fully contained in the range
-        if ei - si >= 2:
-            for i in range(si, ei):
-                c = self.load_child(self.children[i])
-                middle.extend(c.link().range_query(nranges))
-
-        # Get the results from the child containing the start of the range
-        if start_child:
-            c = self.load_child(sc)
-            first = c.range_query(ranges)
-
-        # Recurse on child containing end of range
+        # Get the results from all children fully contained in the range,
+        # in reverse order: that's how they're written to disk.
+        # First, recurse on child containing end of range.
         if end_child and ei > si:
             c = self.load_child(ec)
-            last = c.range_query(ranges)
+            results.extend(c.range_query(ranges))
 
-        # join the lists
-        first.extend(middle)
-        first.extend(last)
-        return res[0]
+        # Now do all of the fully-contained children
+        if ei - si >= 2:
+            for i in reversed(xrange(si, ei)):
+                c = self.load_child(self.children[i])
+                results.extend(c.link().range_query(nranges))
+
+        # Last, the child containing the start of the range
+        if start_child:
+            c = self.load_child(sc)
+            results.extend(c.range_query(ranges))
+
+        # BAM
+        return results
