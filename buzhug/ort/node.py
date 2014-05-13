@@ -20,7 +20,8 @@ class RangeNode(object):
 
     # Return a string representing this node for printing.
     def __repr__(self):
-        return "<Branch %s>" % ", ".join(map(str, self.children))
+        return "<Branch %s>" % ", ".join([self.dimension, str(self.pos)] +
+                map(str, self.children))
 
     def __setstate__(self, dict):
         self.__dict__.update(dict)

@@ -17,7 +17,8 @@ class RangeLeaf(RangeNode):
 
     # Return a string representing this node for printing.
     def __repr__(self):
-        return "<Leaf %s>" % ", ".join(map(str, self.data))
+        return "<Leaf %s>" % ", ".join([self.dimension, str(self.pos)] +
+                map(str, self.data))
 
     def __getstate__(self):
         out = self.__dict__.copy()
