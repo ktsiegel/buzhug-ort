@@ -15,7 +15,7 @@ def basic_flush_test():
     s = serializer(tree_file)
     node1 = Node(s, **{'min' : 10})
     node2 = Node(s, **{'max' : 100})
-    s.dumps([node1, node2])
+    s.dumps_many([node1, node2])
     s.flush()
 
     assert node1.pos == 0

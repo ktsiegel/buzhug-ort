@@ -44,7 +44,7 @@ class Serializer:
     Methods common to all serializers, no matter how serialization of one node
     is done
     """
-    def dumps(self, nodes):
+    def dumps_many(self, nodes):
         """
         In write mode, API call to serialize nodes and append them to the tree
         file. Call self.flush() once done dumping to switch to read mode. No
@@ -66,6 +66,9 @@ class Serializer:
             size = struct.pack('l', len(block))
             self.f.write(self._dump_node(node) + size)
         self.pos += len(nodes)
+
+    def dumps(self, node):
+        self.dumps_many([node])
 
     def flush(self, existing=False):
         """
