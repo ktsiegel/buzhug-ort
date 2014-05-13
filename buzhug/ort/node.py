@@ -52,22 +52,8 @@ class RangeNode(object):
         child = self.children[index]
         return (index, child)
 
-    #
-    def get_all_data(self):
-        data = []
-        #
-        # traverse in reverse order, because that's how their laid out on disk
-        for c in reversed(self.children):
-            # Now we actually need to load into memory
-            child = self.load_child(c)
-            data.extend(child.get_all_data())
-
-        # Possible optimization:
-        # data = map(RangeNode.get_all_data, children)
-
-        return data
-
     # Get all the data in a range of values. Deprecated.
+    '''
     def get_range_data_old(self, start, end):
         # Get the index of the child containing the end key, or note that it's
         # out of our range.
@@ -95,6 +81,7 @@ class RangeNode(object):
             data.extend(self.children[si].get_range_data(start, end))
 
         return data
+    '''
 
     # Get all the data in a range of values. A generalization of get_all_data.
     def get_range_data(self, start, end):
@@ -148,13 +135,14 @@ class RangeNode(object):
         # Get the results from all children fully contained in the range,
         # in reverse order: that's how they're written to disk.
 
-        # Now do all of the fully-contained children
+        # First do all of the fully-contained children
         if ei - si >= 2:
             for i in reversed(xrange(si, ei)):
                 c = self.load_child(self.children[i])
+                # We know the child has a link because it's the same dimension
                 results.extend(c.link().range_query(nranges))
 
-        # First, recurse on child containing end of range.
+        # Then recurse on child containing end of range.
         if end_child and ei > si:
             c = self.load_child(ec)
             results.extend(c.range_query(ranges))
