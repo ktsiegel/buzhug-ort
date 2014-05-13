@@ -152,6 +152,8 @@ class Serializer:
         return nodes
 
     def loads(self, position):
+        if position < 0:
+            position = self._get_block_count() + position
         return self.loads_many([position])[0]
 
 
