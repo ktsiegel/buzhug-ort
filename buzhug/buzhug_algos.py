@@ -117,8 +117,7 @@ def fast_select(db, names, ort=False, **args):
     # SW: only do a range query if tree is already built
     ort = ort and db.tree != None
     if ort:
-        # only look at fields that have fixed length for now
-        # these can be ints, floats
+        # only look at int, floats - fixed length fields
         range_args = [(k,v) for k,v in args.iteritems() 
             if hasattr(db._file[k],'block_len') and isinstance(value,(list,tuple))]
 

@@ -1,5 +1,3 @@
-from tree import build_tree
-
 class RangeNode(object):
 
     # children is a sorted list of the node's children in the tree - each
@@ -36,7 +34,7 @@ class RangeNode(object):
             return None
 
         # Get index for the first child whose minimum value is greater than key.
-        index = next(idx for idx, val in enumerate(self.values) if val >= key,
+        index = next((idx for idx, val in enumerate(self.values) if val >= key),
                 default=len(self.values))
 
         child = self.children[index]
@@ -60,9 +58,9 @@ class RangeNode(object):
     def get_range_data(self, start, end):
         # Get the indices of the children containing the start and end keys, or
         # note that they are out of our range.
-        si = self.get_child_for(start)[0] if start >= self.min
+        si = self.get_child_for(start)[0] if start >= self.min \
                 else -1
-        ei = self.get_child_for(end)[0] if end >= self.max
+        ei = self.get_child_for(end)[0] if end >= self.max \
                 else len(self.children)
 
         data = []

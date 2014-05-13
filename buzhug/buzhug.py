@@ -625,7 +625,7 @@ class Base:
                     raise TypeError,"Can't convert %s into %s" %(kw[k],t)
         return or_kw
 
-    def build_tree(self, fields=None, B=2):
+    def build_tree(self, fields=None, B=2, filename=""):
         """
         SW: Build the range tree woo
         """
@@ -637,6 +637,9 @@ class Base:
                 
         # get all...should we be selecting for dimensions here or do we need
         # whole record?
+
+        # format: list of records, where each record is a list of tuples of
+        # (column name, value) 
         records, names = self._select(None, None)
         # build the tree if it doesn't exist already
         self.tree = tree.RangeTree(records, B, self.tree_name)

@@ -1,5 +1,4 @@
 from node import RangeNode
-from tree import build_tree
 
 class RangeLeaf(RangeNode):
 
@@ -25,9 +24,9 @@ class RangeLeaf(RangeNode):
         # greater than key.
         enum_values = ((index, point[0][1]) for index, point in
                 enumerate(self.data))
-        si = next(idx for idx, val in enum_values if val >= start,
+        si = next((idx for idx, val in enum_values if val >= start),
                 default=len(enum_values))
-        ei = next(idx for idx, val in enum_values if val > end,
+        ei = next((idx for idx, val in enum_values if val > end),
                 default=len(enum_values))
 
         if self.full_data:
