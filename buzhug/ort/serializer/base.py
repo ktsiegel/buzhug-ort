@@ -24,11 +24,11 @@ class Serializer:
         """
         # TODO: consider passing in a node class?
 
-        self.filename = filename
-        
+        self.filename = filename + '.hodor'
+
         self.read_mode = False
         self.pos = 0
-        self.num_blocks = None 
+        self.num_blocks = None
 
         if os.path.isfile(filename):
             # tree has already been built, so we're in read mode
@@ -159,20 +159,20 @@ class Serializer:
 
     """
     Methods defined by different serialization methods - must override these in Serializer
-    subclasses 
+    subclasses
     """
     def _dump_node(self, node):
         """
         In append mode, given an instance of a node, serialize it and
-        return string 
+        return string
         """
-        return "" 
+        return ""
 
     def _load_node(self):
         """
         In read mode, deserialize the node at current position in file
         """
-        return None 
+        return None
 
     def _seek(self, position):
         """
@@ -182,6 +182,6 @@ class Serializer:
 
     def _get_block_count(self):
         """
-        In read mode, return the number of blocks in the tree file 
+        In read mode, return the number of blocks in the tree file
         """
         return 0
