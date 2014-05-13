@@ -15,6 +15,10 @@ class RangeLeaf(RangeNode):
         self.min = min(self.data, key=lambda d: d[1])
         self.max = max(self.data, key=lambda d: d[1])
 
+    # Return a string representing this node for printing.
+    def __repr__(self):
+        return "<Leaf %s>" % ", ".join(map(str, self.data))
+
     def __getstate__(self):
         out = self.__dict__.copy()
         tdel = ['max', 'min']

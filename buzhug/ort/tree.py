@@ -123,5 +123,6 @@ def build_upwards(data, B, NodeClass, serializer,
 if __name__ == '__main__':
     data = [[(i, random.random()) for i in ['x', 'y', 'z']] for j in
             range(10**6)]
-    B = 10
+    B = 100
     tree = build_tree(data, B)
+    print tree

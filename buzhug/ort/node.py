@@ -19,10 +19,8 @@ class RangeNode(object):
         self.values = [child[0] for child in self.children[1:]]
 
     # Return a string representing this node for printing.
-    # TODO: Figure out how this worked, and make it work again
     def __repr__(self):
-        name = getattr(self, "children", 0) and "Branch" or "Leaf"
-        return "<%s %s>" % (name, ", ".join(map(str, self.values)))
+        return "<Branch %s>" % ", ".join(map(str, self.values))
 
     def __setstate__(self, dict):
         self.__dict__.update(dict)
