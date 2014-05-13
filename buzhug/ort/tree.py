@@ -76,11 +76,20 @@ def build_upwards(data, B, NodeClass, serializer,
         # If there is more than one parent's worth of children, chop
         # off the first B in a chunk
         cluster = children[i * B:(i + 1) * B]
+<<<<<<< Updated upstream
         cluster_start = i * B
         cluster_end = i * B + len(cluster)
         if not is_leaf:
             cluster_start = children_intervals[cluster_start][0]
             cluster_end = children_intervals[cluster_end - 1][1]
+=======
+        if is_leaf:
+            cluster_start = i * B
+            cluster_end = (i + 1) * B
+        else:
+            cluster_start = children_intervals[i * B][0]
+            cluster_end = children_intervals[(i + 1) * B - 1][1]
+>>>>>>> Stashed changes
 
         # serialize parent's linked tree in next dimension
         linked_root = None
@@ -100,7 +109,11 @@ def build_upwards(data, B, NodeClass, serializer,
             else:
                 parent = NodeClass(cluster, linked_root, dim)
         else:
+<<<<<<< Updated upstream
             parent = NodeClass(cluster, linked_root, dim, serializer)
+=======
+            parent = NodeClass(cluster, B, linked_root, dim, serializer)
+>>>>>>> Stashed changes
 
         # then serialize parent
         serializer.dumps(parent)
