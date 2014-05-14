@@ -88,7 +88,7 @@ def build_test():
 def search_test():
     data = []
     B = 10
-    num_query = 10 
+    num_query = 10000
     num_items = 1000
 
     for i in range(num_items):
@@ -132,6 +132,7 @@ def search_test():
         print 'ranges:', ranges
         print 'result:', len(result)
         print 'should be:', len(real_result), 'items'
+<<<<<<< HEAD
 
         real_results = [res[0][1] for res in real_result]
         results = sorted(res[0][1] for res in result)
@@ -139,6 +140,12 @@ def search_test():
         print "have too many:", sorted(res[0][1] for res in result if res[0][1] not in real_results)
         print "missing:", sorted(res[0][1] for res in real_result if res[0][1] not in results)
 
+=======
+        result = [i[:3] for i in result]
+        if len(real_result) != len(result):
+            print 'should have been in the result:', [i for i in real_result if i not in result]
+            print 'should not have been in the result:', [i for i in result if i not in real_result]
+>>>>>>> affe31875ff5270b66f5a15f90be636bf36f56a0
         assert len(real_result) == len(result)
 
     total = time.time() - start

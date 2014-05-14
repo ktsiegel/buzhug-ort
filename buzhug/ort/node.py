@@ -135,10 +135,13 @@ class RangeNode(object):
         # Get the results from all children fully contained in the range,
         # in reverse order: that's how they're written to disk.
 
+        recursed_on = []
+
         # First do all of the fully-contained children
         if ei >= si:
             for i in reversed(xrange(si, ei + 1)):
                 c = self.load_child(self.children[i])
+                recursed_on.append(self.children[i])
                 # We know the child has a link because it's the same dimension
                 results.extend(c.link().range_query(nranges))
 
@@ -147,13 +150,15 @@ class RangeNode(object):
             c = self.children[ei + 1]
             if end >= c[1]:
                 child = self.load_child(c)
+                recursed_on.append(c)
                 results.extend(child.range_query(ranges))
 
         # Last, the child containing the start of the range
         if si > 0 and si != ei + 2:
             c = self.children[si - 1]
-            if start <= c[2]:
+            if start <= c[2] and c not in recursed_on:
                 child = self.load_child(c)
+                recursed_on.append(c)
                 results.extend(child.range_query(ranges))
 
         # BAM
