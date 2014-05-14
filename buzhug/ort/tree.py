@@ -32,14 +32,14 @@ def build_tree(data, B, serializer):
                     not the same in every data item.')
 
     # Now that we've got leaves, let's build their parents, recursively.
-    root = build_upwards(data, B, RangeLeaf, serializer)
+    root = build_upwards(data, 0, B, RangeLeaf, serializer)
 
     # should be done serializing
     serializer.flush()
     # and output the root
     return serializer.loads(-1)
 
-def build_upwards(data, B, NodeClass, serializer,
+def build_upwards(data, dim_index, B, NodeClass, serializer,
         children=None,
         children_intervals=None):
     """
@@ -57,12 +57,12 @@ def build_upwards(data, B, NodeClass, serializer,
     is_leaf = NodeClass == RangeLeaf
     # if this is the lowest level, sort by keys and set the children
     if is_leaf:
-        data.sort(key=lambda dp: dp[0][1])
+        data.sort(key=lambda dp: dp[dim_index][1])
         # set starts and ends for each child
         # a child is in the form: (child_data, start, end)
-        # child_data is (value, id)
+        # child_data is (id, id)
         # start and end are indices into the larger data list
-        children = [(data_item[-1], data_item[0][1]) for data_item in data]
+        children = [(data_item[-1], data_item[dim_index][1]) for data_item in data]
 
     parents = []
     parent_intervals = []
@@ -72,7 +72,7 @@ def build_upwards(data, B, NodeClass, serializer,
         num_clusters += 1
 
     # data[0][0][0] is the dimension name unfortunately...
-    dim = data[0][0][0]
+    dim = data[0][dim_index][0]
     prev_leaf = None
     for i in range(num_clusters):
         # If there is more than one parent's worth of children, chop
@@ -86,17 +86,16 @@ def build_upwards(data, B, NodeClass, serializer,
 
         # serialize parent's linked tree in next dimension
         linked_root = None
-        # if there's still another dimension, and the unique id in the data
-        # items
-        if len(data[0]) > 2:
+        # last element in data[0] is the id, if we're more than one before
+        # that, there's still another dimension to build a tree for
+        if dim_index < len(data[0]) - 2:
             # build the next dimension
-            linked_data = [data_item[1:]
-                    for data_item in data[cluster_start : cluster_end]]
-            linked_root = build_upwards(linked_data, B, RangeLeaf, serializer)
+            linked_root = build_upwards(data[cluster_start : cluster_end],
+                    dim_index + 1, B, RangeLeaf, serializer)
 
         if is_leaf:
             # if we're at the bottom of the last tree, pass in the full data item
-            if len(data[0]) == 2:
+            if dim_index == len(data[0]) - 2:
                 parent = NodeClass(cluster, linked_root, dim, prev_leaf,
                         data[cluster_start : cluster_end])
             else:
@@ -119,6 +118,7 @@ def build_upwards(data, B, NodeClass, serializer,
     # their own parents. Recurse.
     if len(parents) > 1:
         # On the recursive steps, the parents are always RangeNodes.
-        return build_upwards(data, B, RangeNode, serializer, parents, parent_intervals)
+        return build_upwards(data, dim_index, B, RangeNode, serializer,
+                parents, parent_intervals)
 
     return parents[0][0]

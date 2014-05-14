@@ -49,10 +49,16 @@ def build_test():
             if i != 0:
                 assert root_grandchildren[i].prev == \
                     root_grandchildren[i - 1].pos
-
-    print serializer.back_seeks
+            
+            # test that full data is only stored at the last dimension
+            if root != root3:
+                assert root_grandchildren[i].full_data == None
+            else:
+                assert len(root_grandchildren[i].full_data) > 0
+                assert len(root_grandchildren[i].full_data[0]) == 4
 
 def search_test():
+    return
     data = []
     B = 3
     num_query = 1
