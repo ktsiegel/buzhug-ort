@@ -39,7 +39,7 @@ class RangeLeaf(RangeNode):
 
     # Get all data in the specified range - recurse on the previous leaf if this
     # one doesn't have the start value in its range.
-    def get_range_data(self, start, end):
+    def get_range_data(self, start, end, recurse=True):
         # Figure out how much of our data falls in the given range.
         si = None
         ei = None
@@ -66,11 +66,16 @@ class RangeLeaf(RangeNode):
         #print start, end, self.data, data
 
         # Either return what we have, or recurse on our predecessor node.
-        if self.min < start or self.prev is None:
+        if self.min < start or self.prev is None or not recurse:
             return data
 
-        ret = self.load_prev().get_range_data(start, end)
-        ret.extend(data)
+        leaf = self
+        ret = data
+        while leaf.min >= start and leaf.prev is not None:
+            leaf = leaf.load_prev()
+            data = leaf.get_range_data(start, end, recurse=False)
+            ret.extend(data)
+
         return ret
 
     # Return everything in this leaf for the specified ranges
