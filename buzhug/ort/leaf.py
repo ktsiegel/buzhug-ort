@@ -32,10 +32,7 @@ class RangeLeaf(RangeNode):
         return self.serializer.loads(self.linked_node)
 
     def load_prev(self):
-        if self.prev:
-            return self.serializer.loads(self.prev)
-        else:
-            return None
+        return self.serializer.loads(self.prev)
 
     # Get all data in the specified range - recurse on the previous leaf if this
     # one doesn't have the start value in its range.
@@ -51,8 +48,8 @@ class RangeLeaf(RangeNode):
 
         # if everything in this leaf is greater than the end, then none of your
         # data should be returned
-        if ei is None:
-            ei = 0
+        if ei is None or si is None:
+            si, ei = 0, 0
         # else return a slice
         else:
             ei += 1
@@ -67,6 +64,7 @@ class RangeLeaf(RangeNode):
 
         # Either return what we have, or recurse on our predecessor node.
         if self.min < start or self.prev is None or not recurse:
+            print self.min, self.max, data, self.data
             return data
 
         leaf = self

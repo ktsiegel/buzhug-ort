@@ -21,6 +21,7 @@ def build_tree(data, B, serializer):
     # sort the fieldnames in each data item before doing field checks
     # last element of each data item is now a unique id for the record
     [data_item.sort(key=lambda field: field[0]) for data_item in data]
+    data.sort(key=lambda data_item: data_item[0][1])
     data = [data_item + [i] for i, data_item in enumerate(data)]
 
     # If the sequence of keys is not the same in every other data item

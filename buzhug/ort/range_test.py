@@ -2,10 +2,9 @@ import os, random, time, tree
 from serializer.line_serializer import LineSerializer
 
 def build_test():
-    return
     data = []
 
-    for j in range(10000):
+    for j in range(1000):
         data_item = [("field" + str(i), random.random() * 10000) for i in range(3)]
         data.append(data_item)
 
@@ -75,20 +74,27 @@ def build_test():
             data_item[0][1] <= end]
 
     #print root1.range_query(ranges)
-    print root1.get_range_data(start, end)
+    #print root1.get_range_data(start, end)
 
-    print result
+    #print result
     assert len(result) == len(root1.get_range_data(start, end))
+
+    # check that getting leaves is working in final dimension
+    result = [data_item[0] for data_item in data if data_item[2][1] >= start
+            and data_item[2][1] <= end]
+    assert len(result) == len(root3.get_range_data(start, end))
+
 
 def search_test():
     data = []
     B = 10
-    num_query = 100
-    num_items = 100
+    num_query = 10 
+    num_items = 1000
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
-                for dimension in ['x', 'y', 'z']]
+                #for dimension in ['x', 'y', 'z']]
+                for dimension in ['x']]
         data.append(item)
 
     tree_file = 'test-tree-2.hodor'
@@ -97,15 +103,19 @@ def search_test():
     serializer = LineSerializer(tree_file)
 
     root = tree.build_tree(data, B, serializer)
-    root2 = serializer.loads(root.linked_node)
-    root3 = serializer.loads(root2.linked_node)
+    #root2 = serializer.loads(root.linked_node)
+    #root3 = serializer.loads(root2.linked_node)
+
+    #data.sort(key=lambda data_item: data_item[0][1])
+    #data = [data_item + [i] for i, data_item in enumerate(data)]
 
     ranges = []
     start = time.time()
     for i in range(num_query):
         ranges = {d: (random.randrange(-1000, 0),
                      random.randrange(0, 1000))
-                    for d in ['x', 'y', 'z']}
+                    #for d in ['x', 'y', 'z']}
+                    for d in ['x']}
         result = root.range_query(ranges)
         real_result = []
 
@@ -122,9 +132,14 @@ def search_test():
         print 'ranges:', ranges
         print 'result:', len(result)
         print 'should be:', len(real_result), 'items'
+
+        real_results = [res[0][1] for res in real_result]
+        results = sorted(res[0][1] for res in result)
+        print results
+        print "have too many:", sorted(res[0][1] for res in result if res[0][1] not in real_results)
+        print "missing:", sorted(res[0][1] for res in real_result if res[0][1] not in results)
+
         assert len(real_result) == len(result)
 
     total = time.time() - start
     print num_query, 'queries on', num_items, 'items took', total, 'seconds'
-
-    assert False
