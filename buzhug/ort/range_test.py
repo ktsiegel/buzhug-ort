@@ -5,8 +5,8 @@ def build_test():
     return
     data = []
 
-    for j in range(1000):
-        data_item = [("field" + str(i), int(random.random() * 1000)) for i in range(3)]
+    for j in range(10000):
+        data_item = [("field" + str(i), random.random() * 10000) for i in range(3)]
         data.append(data_item)
 
     tree_file = 'test-tree.hodor'
@@ -14,7 +14,7 @@ def build_test():
         os.remove(tree_file)
     serializer = LineSerializer(tree_file)
 
-    root1 = tree.build_tree(data, 7, serializer)
+    root1 = tree.build_tree(data, 28, serializer)
     root2 = root1.link()
     root3 = root2.link()
 
