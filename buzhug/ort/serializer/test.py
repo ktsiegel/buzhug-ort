@@ -1,9 +1,9 @@
 import os
 
-from line_serializer import LineSerializer
+from line_serializer import LineSerializer, LinecacheSerializer
 from node_class import Node
 
-serializer = LineSerializer
+serializer = LinecacheSerializer
 
 def basic_flush_test():
     tree_file = 'test.hodor'
@@ -29,7 +29,8 @@ def basic_flush_test():
     serialized = s.loads(node2.pos)
     assert serialized.max == 100
 
-    assert s.back_seeks == 1
+    if serializer != LinecacheSerializer:
+        assert s.back_seeks == 1
 
     s.kill()
 

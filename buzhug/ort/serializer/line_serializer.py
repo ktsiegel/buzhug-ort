@@ -1,4 +1,5 @@
 import cPickle as pickle
+import linecache
 from base import Serializer
 
 class LineSerializer(Serializer):
@@ -40,3 +41,22 @@ class LineSerializer(Serializer):
             for i, l in enumerate(f):
                 pass
         return i + 1
+
+class LinecacheSerializer(LineSerializer):
+    def flush(self, existing=False):
+        Serializer.flush(self, existing)
+
+    def loads(self, position):
+        return self._load_node(position)
+
+    def _load_node(self, pos=None):
+        # unenscape newline characters and unpickle
+        pos = self.num_blocks - pos 
+        line = linecache.getline(self.filename, pos)
+        line = line.replace('\\n', '\n')
+        #line = self.lines.next().replace('\\n', '\n')
+        self.pos += 1
+        node = pickle.loads(line)
+        node.serializer = self
+        return node
+

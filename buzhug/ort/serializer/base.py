@@ -55,7 +55,7 @@ class Serializer:
         be inverted during self.loads to actually look up a node
         """
         if self.read_mode:
-            raise Exception
+            raise Exception("Nope file's already flushed")
 
         for i, node in enumerate(nodes):
             node.pos = self.pos + i
@@ -129,31 +129,18 @@ class Serializer:
         """
         self.f.close()
 
-    def loads_many(self, positions):
-        """
-        In write mode, api call to load the nodes at a list of positions
-        """
-        if not self.read_mode:
-            raise OSError
-        nodes = []
-        # look up the positions in order so that we do as few back seeks as possible
-        for position in sorted(positions):
-            # have to invert indices since the actual file is written backwards
-            # from original
-            position = self.num_blocks - position - 1
-            if self.pos > position:
-                self.back_seeks += 1
-            self._seek(position)
-            self.pos = position
-            node = self._load_node()
-            node.serializer = self
-            nodes.append(node)
-        return nodes
-
     def loads(self, position):
         if position < 0:
             position = self._get_block_count() + position
-        return self.loads_many([position])[0]
+        position = self.num_blocks - position - 1
+        if self.pos > position:
+            self.back_seeks += 1
+        self._seek(position)
+        self.pos = position
+        node = self._load_node()
+        node.serializer = self
+
+        return node
 
 
     """
