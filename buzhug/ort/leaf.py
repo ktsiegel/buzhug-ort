@@ -13,8 +13,8 @@ class RangeLeaf(RangeNode):
         self.build()
 
     def build(self):
-        self.min = min(data_item[1] for data_item in self.data)
-        self.max = max(data_item[1] for data_item in self.data)
+        self.min = self.data[0][1]
+        self.max = self.data[-1][1]
 
     # Return a string representing this node for printing.
     def __repr__(self):
