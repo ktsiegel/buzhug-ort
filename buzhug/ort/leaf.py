@@ -60,11 +60,8 @@ class RangeLeaf(RangeNode):
         else:
             data = self.data[si:ei]
 
-        #print start, end, self.data, data
-
         # Either return what we have, or recurse on our predecessor node.
         if self.min < start or self.prev is None or not recurse:
-            print self.min, self.max, data, self.data
             return data
 
         leaf = self

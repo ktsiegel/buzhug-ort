@@ -53,19 +53,6 @@ class RangeNode(object):
 
         return None
 
-    def get_child(self, key, start):
-        enums = enumerate(self.children)
-        if not start:
-            enums = reversed(list(enums))
-
-        for idx, (p, min, max) in enums:
-            if start and key < min:
-                return idx
-            if not start and key > max:
-                return idx
-
-        return None
-
     # Returns all data in the tree. Not used except for debugging.
     def get_all_data(self):
         return self.get_range_data(self.min - 1, self.max + 1)
@@ -108,12 +95,6 @@ class RangeNode(object):
         if self.linked_node is None:
             return self.get_range_data(start, end)
 
-        # Otherwise, search recursively on the nodes in the range.
-        # start_child & end_child are the nodes containing the start and end of
-        # the range
-        si = self.get_child(start, True)
-        ei = self.get_child(end, False)
-
         # We want to find all subtrees rooted between the two paths, and
         # recursively search those. Perform a (d-1)-dimensional query on the
         # linked trees of all of this node's children completely within the
@@ -121,27 +102,33 @@ class RangeNode(object):
         # the edge of the range (lchild and rchild).
         results = []
 
-        if si is None and start <= self.max:
-            c = self.load_child(self.children[-1])
-            return c.range_query(ranges)
-
-        if ei is None and end >= self.min:
-            c = self.load_child(self.children[0])
-            return c.range_query(ranges)
-
-        if si is None or ei is None:
-            raise Exception('dun goofd')
-
         # Get the results from all children fully contained in the range,
         # in reverse order: that's how they're written to disk.
 
-        recursed_on = []
+        # if the end is strictly in the range of the first child
+        if self.children[0][2] > end:
+            c = self.load_child(self.children[0])
+            return c.range_query(ranges)
+        # if the start is strictly in the range of the last child
+        if self.children[-1][1] < start:
+            c = self.load_child(self.children[-1])
+            return c.range_query(ranges)
+
+        # otherwise, there might be children whose linked nodes we have to
+        # check
+        # si = first child whose range is completely within (start, end)
+        # ei = last child whose range is completely within (start, end)
+        si, ei = len(self.children) - 1, 0
+        while ei + 1 < len(self.children) and self.children[ei + 1][2] <= end:
+            ei += 1
+        while si > 0 and self.children[si - 1][1] >= start:
+            si -= 1
 
         # First do all of the fully-contained children
         if ei >= si:
             for i in reversed(xrange(si, ei + 1)):
                 c = self.load_child(self.children[i])
-                recursed_on.append(self.children[i])
+                #recursed_on.append(self.children[i])
                 # We know the child has a link because it's the same dimension
                 results.extend(c.link().range_query(nranges))
 
@@ -150,15 +137,13 @@ class RangeNode(object):
             c = self.children[ei + 1]
             if end >= c[1]:
                 child = self.load_child(c)
-                recursed_on.append(c)
                 results.extend(child.range_query(ranges))
 
         # Last, the child containing the start of the range
-        if si > 0 and si != ei + 2:
+        if si > 0 and si - 1 != ei + 1:
             c = self.children[si - 1]
-            if start <= c[2] and c not in recursed_on:
+            if start <= c[2]:
                 child = self.load_child(c)
-                recursed_on.append(c)
                 results.extend(child.range_query(ranges))
 
         # BAM

@@ -1,4 +1,4 @@
-import os, random, time, tree, timeit
+import os, random, time, tree
 from serializer.line_serializer import LineSerializer
 
 def build_test():
@@ -89,12 +89,13 @@ def search_test():
     data = []
     B = 10
     num_query = 10000
-    num_items = 100000
+    num_query = 100
+    num_items = 10000
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
-                #for dimension in ['x', 'y', 'z']]
-                for dimension in ['x']]
+                for dimension in ['x', 'y', 'z']]
+                #for dimension in ['x']]
         data.append(item)
 
     tree_file = 'test-tree-2.hodor'
@@ -110,19 +111,15 @@ def search_test():
     #data = [data_item + [i] for i, data_item in enumerate(data)]
 
     ranges = []
-    qtime = 0
-    dumbtime = 0
+    start = time.time()
     for i in range(num_query):
         ranges = {d: (random.randrange(-1000, 0),
                      random.randrange(0, 1000))
                     for d in ['x', 'y', 'z']}
-        start = time.time()
+                    #for d in ['x']}
         result = root.range_query(ranges)
-        qtime += time.time() - start
-
         real_result = []
 
-        start = time.time()
         for d in data:
             incl = True
             for key in ranges:
@@ -132,15 +129,25 @@ def search_test():
                     incl = False
             if incl:
                 real_result.append(d)
-        dumbtime += time.time() - start
 
         print 'ranges:', ranges
         print 'result:', len(result)
         print 'should be:', len(real_result), 'items'
-        print num_query, 'queries on', num_items, 'items took', qtime, 'seconds'
-        print num_query, 'naive searches on', num_items, 'items took', dumbtime, 'seconds'
+        result = [i[:3] for i in result]
+        if len(real_result) != len(result):
+            missing = [i for i in real_result if i not in result]
+            missing = map(lambda res: tuple(i[1] for i in res), missing)
+            #print 'should have been in the result:', [i for i in real_result if i not in result]
+            print 'should have been in the result:', missing
+
+            extra = [i for i in result if i not in real_result]
+            extra = map(lambda res: tuple(i[1] for i in res), extra)
+            #print 'should not have been in the result:', [i for i in result if i not in real_result]
+            print 'should not have been in the result:', extra
+
         assert len(real_result) == len(result)
 
     total = time.time() - start
+    print num_query, 'queries on', num_items, 'items took', total, 'seconds'
 
-    assert False
+    print serializer.back_seeks
