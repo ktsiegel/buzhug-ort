@@ -83,8 +83,8 @@ def build_test():
 def search_test():
     data = []
     B = 10
-    num_query = 100
-    num_items = 100
+    num_query = 10000
+    num_items = 1000
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
@@ -122,6 +122,10 @@ def search_test():
         print 'ranges:', ranges
         print 'result:', len(result)
         print 'should be:', len(real_result), 'items'
+        result = [i[:3] for i in result]
+        if len(real_result) != len(result):
+            print 'should have been in the result:', [i for i in real_result if i not in result]
+            print 'should not have been in the result:', [i for i in result if i not in real_result]
         assert len(real_result) == len(result)
 
     total = time.time() - start
