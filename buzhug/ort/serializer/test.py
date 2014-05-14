@@ -6,7 +6,7 @@ from node_class import Node
 serializer = LineSerializer
 
 def basic_flush_test():
-    tree_file = 'test'
+    tree_file = 'test.hodor'
     print "testing serializer", serializer.__name__
 
     if os.path.isfile(tree_file):

@@ -3,12 +3,11 @@ from node import RangeNode
 class RangeLeaf(RangeNode):
 
     # Initialize a leaf with a *sorted* set of data points
-    def __init__(self, data, linked_node, dim, prev, full_data=None):
+    def __init__(self, data, linked_node, dim, prev):
         # [(id, value), ..., ]
         self.data = data
         self.dimension = dim
         self.linked_node = linked_node
-        self.full_data = full_data
         self.prev = prev
         self.build()
 
@@ -42,20 +41,19 @@ class RangeLeaf(RangeNode):
     def get_range_data(self, start, end, recurse=True):
         # Figure out how much of our data falls in the given range.
         enum_values = enumerate(self.data)
-        si = next((idx for idx, val in enum_values if val >= start),
+        si = next((idx for idx, val in enum_values if val[1] >= start),
                   len(self.data))
-        ei = next((idx for idx, val in enum_values if val > end),
+        ei = next((idx for idx, val in enum_values if val[1] > end),
                   len(self.data))
 
         # Get our slice of the data.
-        if self.full_data:
-            data = self.full_data[si:ei]
-        else:
-            data = self.data[si:ei]
+        data = self.data[si:ei]
 
         # Either return what we have, or recurse on our predecessor node.
         if recurse and start <= self.min and self.prev:
-            return self.load_prev().get_range_data(start, end).extend(data)
+            ret = self.load_prev().get_range_data(start, end)
+            ret.extend(data)
+            return ret
         return data
 
     # Return everything in this leaf for the specified ranges
@@ -79,10 +77,15 @@ class RangeLeaf(RangeNode):
         # We want to recurse down to the last dimension, and return everything
         # that fits all the ranges. Perform a (d-1)-dimensional query on our
         # linked leaf, and return the union of that result and our range.
-        their_results = self.link().range_query(nranges)
-        my_indices = set(i[-1] for i in self.get_range_data(
+        lleaf = self.link()
+        their_results = map(lambda r: [r[0], (lleaf.dimension, r[1])],
+                            lleaf.range_query(nranges))
+        my_indices = set(i[0] for i in self.get_range_data(
                          start, end, recurse=False))
 
         # Check each one of the lower level's results to see if it's included in
-        # our range.
-        return [r for r in their_results if r[-1] in my_indices]
+        # our range. If so, stick on our data item and return.
+        filtered = [r for r in their_results if r[0] in my_indices]
+        mapped = map(lambda r: [r[0], (self.dimension, ), r[1]], their_results)
+
+        return mapped

@@ -24,8 +24,7 @@ class Serializer:
         """
         # TODO: consider passing in a node class?
 
-        self.filename = filename + '.hodor'
-
+        self.filename = filename
         self.read_mode = False
         self.pos = 0
         self.num_blocks = None

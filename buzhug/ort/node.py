@@ -16,7 +16,7 @@ class RangeNode(object):
         # This stores values for all of the node's children except for the
         # smallest one. This allows searching for a child quickly with >=
         # comparisons.
-        self.values = [child[0] for child in self.children[1:]]
+        self.values = [child[1] for child in self.children[1:]]
 
     # Return a string representing this node for printing.
     def __repr__(self):
@@ -79,6 +79,8 @@ class RangeNode(object):
     # {dimension/column name: (start, end)}. Returns a list of items included in
     # the range from this node's subtree.
     def range_query(self, ranges):
+        print 'Me! dim =', self.dimension, 'children =', len(self.children), \
+                'values =', self.values
         # First get the left and right keys from the first dimension in
         # sorted order, then find their paths
         if self.dimension in ranges:
@@ -96,6 +98,7 @@ class RangeNode(object):
         # The base case: this tree is in the last dimension, so return all nodes
         # in the range.
         if not self.linked_node:
+            print self.dimension
             return self.get_range_data(start, end)
 
         # Otherwise, search recursively on the nodes in the range.

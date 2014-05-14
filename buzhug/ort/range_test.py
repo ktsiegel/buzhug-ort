@@ -1,7 +1,4 @@
-import os
-import random
-import time
-import tree
+import os, random, time, tree
 from serializer.line_serializer import LineSerializer
 
 def build_test():
@@ -11,7 +8,7 @@ def build_test():
         data_item = [("field" + str(i), int(random.random() * 10)) for i in range(3)]
         data.append(data_item)
 
-    tree_file = 'test-tree'
+    tree_file = 'test-tree.hodor'
     if os.path.isfile(tree_file):
         os.remove(tree_file)
     serializer = LineSerializer(tree_file)
@@ -57,16 +54,16 @@ def build_test():
 
 def search_test():
     data = []
-    B = 10
-    num_query = 10**2
-    num_items = 10**4
+    B = 3
+    num_query = 1
+    num_items = 20
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
                 for dimension in ['x', 'y', 'z']]
         data.append(item)
 
-    tree_file = 'test-tree-2'
+    tree_file = 'test-tree-2.hodor'
     if os.path.isfile(tree_file):
         os.remove(tree_file)
     serializer = LineSerializer(tree_file)
@@ -78,10 +75,27 @@ def search_test():
     ranges = []
     start = time.time()
     for i in range(num_query):
-        ranges = {d: (random.randrange(-1000, 1000),
-                     random.randrange(-1000, 1000))
+        ranges = {d: (random.randrange(-1000, 0),
+                     random.randrange(0, 1000))
                     for d in ['x', 'y', 'z']}
-        root.range_query(ranges)
+        result = root.range_query(ranges)
+        real_result = []
+
+        for d in data:
+            incl = True
+            for key in ranges:
+                dk = next(i[1] for i in d if i[0] == key)
+                if dk < ranges[key][0] \
+                        or dk > ranges[key][1]:
+                    incl = False
+            if incl:
+                real_result.append(d)
+
+        print 'ranges:', ranges
+        print 'result:', len(result)
+        print 'should be:', len(real_result), 'items'
+        assert len(real_result) == len(result)
+
 
     total = time.time() - start
     print num_query, 'queries on', num_items, 'items took', total, 'seconds'
