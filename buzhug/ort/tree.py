@@ -95,7 +95,12 @@ def build_upwards(data, B, NodeClass, serializer,
             linked_root = build_upwards(linked_data, B, RangeLeaf, serializer)
 
         if is_leaf:
-            parent = NodeClass(cluster, linked_root, dim, prev_leaf)
+            # if we're at the bottom of the last tree, pass in the full data item
+            if len(data[0]) == 2:
+                parent = NodeClass(cluster, linked_root, dim, prev_leaf,
+                        data[cluster_start : cluster_end])
+            else:
+                parent = NodeClass(cluster, linked_root, dim, prev_leaf)
         else:
             parent = NodeClass(cluster, linked_root, dim, serializer)
 
