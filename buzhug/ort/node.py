@@ -121,6 +121,17 @@ class RangeNode(object):
         # the edge of the range (lchild and rchild).
         results = []
 
+        if si is None and start <= self.max:
+            c = self.load_child(self.children[-1])
+            return c.range_query(ranges)
+
+        if ei is None and end >= self.min:
+            c = self.load_child(self.children[0])
+            return c.range_query(ranges)
+
+        if si is None or ei is None:
+            raise Exception('dun goofd')
+
         # Get the results from all children fully contained in the range,
         # in reverse order: that's how they're written to disk.
 

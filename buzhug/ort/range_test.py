@@ -84,7 +84,7 @@ def search_test():
     data = []
     B = 10
     num_query = 100
-    num_items = 1000
+    num_items = 10**6
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
