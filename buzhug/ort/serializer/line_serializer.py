@@ -9,7 +9,7 @@ class LineSerializer(Serializer):
     def flush(self, existing=False):
         Serializer.flush(self, existing)
         self.lines = iter(self.f)
-    
+
     def _dump_node(self, node):
         # pickle and escape all newline characters
         line = pickle.dumps(node).replace('\n', '\\n')

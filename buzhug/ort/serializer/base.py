@@ -8,6 +8,7 @@ Methods to override are:
 
 import struct
 import os
+import time
 
 class Serializer:
 
@@ -37,6 +38,9 @@ class Serializer:
 
         # for testing: record how many backwards seeks are needed
         self.back_seeks = 0
+        self.normal_seeks = 0
+        self.back_seek_time = 0
+        self.normal_seek_time = 0
 
 
     """

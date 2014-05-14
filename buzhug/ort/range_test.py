@@ -92,8 +92,7 @@ def build_test():
 def search_test():
     return
     data = []
-    B = 10
-    num_query = 10000
+    B = 100
     num_query = 100
     num_items = 10000
 
@@ -109,11 +108,6 @@ def search_test():
     serializer = LineSerializer(tree_file)
 
     root = tree.build_tree(data, B, serializer)
-    #root2 = serializer.loads(root.linked_node)
-    #root3 = serializer.loads(root2.linked_node)
-
-    #data.sort(key=lambda data_item: data_item[0][1])
-    #data = [data_item + [i] for i, data_item in enumerate(data)]
 
     ranges = []
     start = time.time()
@@ -135,19 +129,17 @@ def search_test():
             if incl:
                 real_result.append(d)
 
-        print 'ranges:', ranges
-        print 'result:', len(result)
-        print 'should be:', len(real_result), 'items'
-        result = [i[:3] for i in result]
         if len(real_result) != len(result):
+            print 'ranges:', ranges
+            print 'result:', len(result), 'should be:', len(real_result), 'items'
+
+            result = [i[:3] for i in result]
             missing = [i for i in real_result if i not in result]
             missing = map(lambda res: tuple(i[1] for i in res), missing)
-            #print 'should have been in the result:', [i for i in real_result if i not in result]
             print 'should have been in the result:', missing
 
             extra = [i for i in result if i not in real_result]
             extra = map(lambda res: tuple(i[1] for i in res), extra)
-            #print 'should not have been in the result:', [i for i in result if i not in real_result]
             print 'should not have been in the result:', extra
 
         assert len(real_result) == len(result)
@@ -155,4 +147,9 @@ def search_test():
     total = time.time() - start
     print num_query, 'queries on', num_items, 'items took', total, 'seconds'
 
-    print serializer.back_seeks
+    print serializer.normal_seeks, 'forward seeks averaged',\
+        10**6 * serializer.normal_seek_time / serializer.normal_seeks, 'microseconds each'
+    print serializer.back_seeks, 'back seeks averaged',\
+        10**6 * serializer.back_seek_time / serializer.back_seeks, 'microseconds each'
+
+    assert False
