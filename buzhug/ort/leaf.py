@@ -98,8 +98,7 @@ class RangeLeaf(RangeNode):
         # that fits all the ranges. Perform a (d-1)-dimensional query on our
         # linked leaf, and return the union of that result and our range.
         their_results = self.link().range_query(nranges)
-        my_indices = set(i[0] for i in self.get_range_data(
-                         start, end, recurse=False))
+        my_indices = set(i[0] for i in self.get_range_data(start, end))
 
         # Check each one of the lower level's results to see if it's included in
         # our range.

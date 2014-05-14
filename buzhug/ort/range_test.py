@@ -2,6 +2,7 @@ import os, random, time, tree
 from serializer.line_serializer import LineSerializer
 
 def build_test():
+    return
     data = []
 
     for j in range(1000):
@@ -49,7 +50,7 @@ def build_test():
     #        if i != 0:
     #            assert root_grandchildren[i].prev == \
     #                root_grandchildren[i - 1].pos
-    #        
+    #
     #        # test that full data is only stored at the last dimension
     #        if root != root3:
     #            assert root_grandchildren[i].full_data == None
@@ -80,11 +81,10 @@ def build_test():
     assert len(result) == len(root1.get_range_data(start, end))
 
 def search_test():
-    return
     data = []
-    B = 3
-    num_query = 1
-    num_items = 20
+    B = 10
+    num_query = 100
+    num_items = 1000
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
@@ -123,7 +123,6 @@ def search_test():
         print 'result:', len(result)
         print 'should be:', len(real_result), 'items'
         assert len(real_result) == len(result)
-
 
     total = time.time() - start
     print num_query, 'queries on', num_items, 'items took', total, 'seconds'
