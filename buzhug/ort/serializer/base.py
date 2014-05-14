@@ -8,6 +8,7 @@ Methods to override are:
 
 import struct
 import os
+import time
 
 class Serializer:
 
@@ -37,6 +38,9 @@ class Serializer:
 
         # for testing: record how many backwards seeks are needed
         self.back_seeks = 0
+        self.normal_seeks = 0
+        self.back_seek_time = 0
+        self.normal_seek_time = 0
 
 
     """
@@ -141,11 +145,22 @@ class Serializer:
             # have to invert indices since the actual file is written backwards
             # from original
             position = self.num_blocks - position - 1
+            bs = False
             if self.pos > position:
-                self.back_seeks += 1
+                bs = True
+
+            start_time = time.time()
             self._seek(position)
             self.pos = position
             node = self._load_node()
+            seek_time = time.time() - start_time
+            if bs:
+                self.back_seeks += 1
+                self.back_seek_time += seek_time
+            else:
+                self.normal_seeks += 1
+                self.normal_seek_time += seek_time
+
             node.serializer = self
             nodes.append(node)
         return nodes
