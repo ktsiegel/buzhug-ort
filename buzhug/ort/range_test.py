@@ -1,4 +1,4 @@
-import os, random, time, tree
+import os, random, time, tree, timeit
 from serializer.line_serializer import LineSerializer
 
 def build_test():
@@ -89,7 +89,7 @@ def search_test():
     data = []
     B = 10
     num_query = 10000
-    num_items = 1000
+    num_items = 100000
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
@@ -110,15 +110,19 @@ def search_test():
     #data = [data_item + [i] for i, data_item in enumerate(data)]
 
     ranges = []
-    start = time.time()
+    qtime = 0
+    dumbtime = 0
     for i in range(num_query):
         ranges = {d: (random.randrange(-1000, 0),
                      random.randrange(0, 1000))
-                    #for d in ['x', 'y', 'z']}
-                    for d in ['x']}
+                    for d in ['x', 'y', 'z']}
+        start = time.time()
         result = root.range_query(ranges)
+        qtime += time.time() - start
+
         real_result = []
 
+        start = time.time()
         for d in data:
             incl = True
             for key in ranges:
@@ -128,25 +132,15 @@ def search_test():
                     incl = False
             if incl:
                 real_result.append(d)
+        dumbtime += time.time() - start
 
         print 'ranges:', ranges
         print 'result:', len(result)
         print 'should be:', len(real_result), 'items'
-<<<<<<< HEAD
-
-        real_results = [res[0][1] for res in real_result]
-        results = sorted(res[0][1] for res in result)
-        print results
-        print "have too many:", sorted(res[0][1] for res in result if res[0][1] not in real_results)
-        print "missing:", sorted(res[0][1] for res in real_result if res[0][1] not in results)
-
-=======
-        result = [i[:3] for i in result]
-        if len(real_result) != len(result):
-            print 'should have been in the result:', [i for i in real_result if i not in result]
-            print 'should not have been in the result:', [i for i in result if i not in real_result]
->>>>>>> affe31875ff5270b66f5a15f90be636bf36f56a0
+        print num_query, 'queries on', num_items, 'items took', qtime, 'seconds'
+        print num_query, 'naive searches on', num_items, 'items took', dumbtime, 'seconds'
         assert len(real_result) == len(result)
 
     total = time.time() - start
-    print num_query, 'queries on', num_items, 'items took', total, 'seconds'
+
+    assert False
