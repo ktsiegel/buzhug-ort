@@ -150,7 +150,7 @@ class RangeNode(object):
                 results.extend(child.range_query(ranges))
 
         # Last, the child containing the start of the range
-        if si > 0:
+        if si > 0 and si != ei:
             c = self.children[si - 1]
             if start <= c[2]:
                 child = self.load_child(c)
