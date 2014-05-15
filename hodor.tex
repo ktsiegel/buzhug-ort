@@ -1,0 +1,124 @@
+\documentclass[11pt, oneside]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage{pslatex}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[margin=.25in]{caption}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{verbatim}
+\usetikzlibrary{automata,topaths}
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+
+\lstset{ %
+  backgroundcolor=\color{white},   % choose the background color
+  basicstyle=\footnotesize,        % size of fonts used for the code
+  breaklines=true,                 % automatic line breaking only at whitespace
+  captionpos=b,                    % sets the caption-position to bottom
+  commentstyle=\color{mygreen},    % comment style
+  escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+  keywordstyle=\color{blue},       % keyword style
+  stringstyle=\color{mymauve},     % string literal style
+}
+
+
+\title{HODOR: HODOR On-Disk Orthogonal Range-trees}
+
+\author{Stephanie Wang (swang93@mit.edu)\\
+Bennett Cyphers (bcyphers@mit.edu)\\
+Katie Siegel (ksiegel@mit.edu)\\[2ex]
+6.851 Final Report}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\clearpage
+
+\section{Introduction}
+
+Many web applications today require data queries in two or more dimensions. For instance, a point of interest on a map has latitude and longitude coordinates, and may be indexed by other comparable values. These include start and end times for an event, price ranges for a business, or average user rating for a service. Databases typically support efficient range querying on one primary key at a time. Multi-dimensional range queries, however, are expensive and require several linear passes of the dataset in most implementations. On the other hand, orthogonal range trees with fractional cascading can improve range queries in $d$ dimensions to $O(\log^{d-1} n + k)$ time, where $k$ is the size of the result set [CITATION]. 
+
+In-memory orthogonal range tree implementations have been able to achieve significant query time speedup [CITATION, Tim's paper]. These can be used to extend a database for smaller datasets. Most datasets, however, are too large to fit in memory, and therefore require an on-disk implementation. To this end, we present HODOR, an on-disk Python implementation of range-trees. 
+
+The main obstacle in an on-disk implementation of orthogonal range trees is the added overhead in disk access time. Therefore, in this paper, we explore different methods of optimizing disk I/O accesses. First, we present optimizations on the range tree structure itself. Second, we propose methods of optimizing individual node serialization. Third, we explore optimizing the serialization of the entire tree. Finally, we present results from benchmarking these optimizations against a Python database [BUZHUG CITATION]. 
+
+
+\section{Data Structure}
+
+
+Ordinarily, multidimensional range queries are expensive, with most methods taking $O(n)$ time. With large databases, a runtime of $O(n)$ is highly costly. To allow for polylog time range queries, we implemented an orthogonal range tree, generalized to d dimensions. We used a B+ tree for our implementation, as B+ trees are more efficient given the architecture of our machine. In this section, we discuss these data structures and the resulting speedup.
+
+\subsection{B+ Tree-Based Orthogonal Range Tree}
+B trees are commonly used for databases, they optimize for the number of disk accesses made for queries. B+ trees are extensions to B trees in which all data is stored in the leaves, and each leaf keeps a pointer to its successor. B+ trees maintain a search time of $O(\log_B n)$. We extend this B+ tree structure to form the orthogonal range tree.
+
+An orthogonal range tree is an extension to a B+ tree in which each node in the tree points to a tree containing the contents of the node's subtree sorted in the next dimension. Dimensions are ordered hierarchically, with the "top level" dimension corresponding to the first-level tree, the second  dimension's information held in subtrees of the nodes in that tree, and so on. B trees support queries in time $O(\log_B^d n + k)$, where $d$ is the number of dimensions of the data. Because we optimize for query time, orthogonal range trees do add a factor of overhead for additional data storage; this space overhead factor is $O(\log_B^{d-1} n)$.   
+	
+\subsection{Using the data structure}
+The tree is constructed in preprocessing, which takes $O(n \cdot \log_B^{d-1} n)$ time. The user can specify any d dimensions for the dataset to be indexed on.
+A dimension can be any continuous, comparable data type which can be mapped to a number.
+Searches are performed on ranges for any subset of the d dimensions, by passing the range tree a set of {dimension: (range start, range end)} pairs. Open-ended range queries are not explicitly supported, but can be performed in practice by setting one of the range bounds to $\pm\infty$.
+
+
+
+
+\section{Introduction}
+Goals:
+	I/O Optimization
+    
+
+
+\section{Implementation}
+
+In python
+serializer
+
+
+\section{Optimization methods}
+
+\subsection{B trees}
+
+
+\subsection{Node serialization}
+
+Orthogonal range tree nodes hold a constant number of values. 
+
+\subsection{Tree serialization}
+
+
+
+
+\section{Results}
+
+We found and formatted two major data sets of two different sizes. The first data set corresponds to New York City parking garages, and the second data set contains entries for every documented instance of crime in the city of Chicago since the year 2001. The second data set is two orders of magnitude larger than the first data set. Both data sets contain multiple numeric fields apart from location on which range queries may be performed. We analyzed the performance of the altered Buzhug database by performing a wide variety of range queries and examining the performance gains.
+
+
+\section{Analysis}
+
+\subsection{Total Time}
+
+\subsection{Disk Reads}
+
+\section{Conclusion}
+
+
+\section{References}
+
+\noindent
+
+\begin{description}
+
+\item item
+
+\end{description}
+\end{document}
