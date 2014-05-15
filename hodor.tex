@@ -233,11 +233,13 @@ that can be stored at each node.
 \end{figure}
 \begin{figure}[p]
     \centering
-    \includegraphics[width=0.8\textwidth]{fig2.eps}
+    \includegraphics[width=1\textwidth]{fig2.eps}
     \caption{Awesome Image}
 \end{figure}
 
-\section{Analysis}
+\section{Results}
+
+\subsection{Optimality of Serialization}
 
 We chose to implement HODOR in Python--namely, in conjunction with the Buzhug Python database. Our initial decision allowed for the rapid implementation of the on-disk orthogonal range tree; however, the performance of our database was hindered by our choice of language. As a high-level scripting language, Python does not allow for low-level memory management of data, in contrast to a language such as C. Additionally, inherent aspects of Python such as dynamic typing and a lack of pointer use result in additional overhead. We hypothesize that an implementation of the orthogonal range tree in a low-level language such as C or C++ that allows memory management would allow for faster tree construction and query times. 
 
