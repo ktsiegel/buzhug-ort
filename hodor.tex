@@ -9,6 +9,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{listings}
 \usepackage{color}
+\usepackage{enumerate}
 \usepackage[margin=.25in]{caption}
 \usepackage{subcaption}
 \usepackage{tikz}
@@ -47,11 +48,11 @@ Katie Siegel (ksiegel@mit.edu)\\[2ex]
 
 \section{Introduction}
 
-Many web applications today require data queries in two or more dimensions. For instance, a point of interest on a map has latitude and longitude coordinates, and may be indexed by other comparable values. These include start and end times for an event, price ranges for a business, or average user rating for a service. Databases typically support efficient range querying on one primary key at a time. Multi-dimensional range queries, however, are expensive and require several linear passes of the dataset in most implementations. On the other hand, orthogonal range trees with fractional cascading can improve range queries in $d$ dimensions to $O(\log^{d-1} n + k)$ time, where $k$ is the size of the result set [CITATION]. 
+Many web applications today require data queries in two or more dimensions. For instance, a point of interest on a map has latitude and longitude coordinates, and may be indexed by other comparable values. These include start and end times for an event, price ranges for a business, or average user rating for a service. Databases typically support efficient range querying on one primary key at a time. Multi-dimensional range queries, however, are expensive and require several linear passes of the dataset in most implementations. On the other hand, orthogonal range trees with fractional cascading can improve range queries in $d$ dimensions to $O(\log^{d-1} n + k)$ time, where $k$ is the size of the result set [1]. 
 
-In-memory orthogonal range tree implementations have been able to achieve significant query time speedup [CITATION, Tim's paper]. These can be used to extend a database for smaller datasets. Most datasets, however, are too large to fit in memory, and therefore require an on-disk implementation. To this end, we present HODOR, an on-disk Python implementation of range-trees. 
+In-memory orthogonal range tree implementations have been able to achieve significant query time speedup [2]. These can be used to extend a database for smaller datasets. Most datasets, however, are too large to fit in memory, and therefore require an on-disk implementation. To this end, we present HODOR, an on-disk Python implementation of range-trees. 
 
-The main obstacle in an on-disk implementation of orthogonal range trees is the added overhead in disk access time. Therefore, in this paper, we explore different methods of optimizing disk I/O accesses. First, we present optimizations on the range tree structure itself. Second, we propose methods of optimizing individual node serialization. Third, we explore optimizing the serialization of the entire tree. Finally, we present results from benchmarking these optimizations against a Python database [BUZHUG CITATION]. 
+The main obstacle in an on-disk implementation of orthogonal range trees is the added overhead in disk access time. Therefore, in this paper, we explore different methods of optimizing disk I/O accesses. First, we present optimizations on the range tree structure itself. Second, we propose methods of optimizing individual node serialization. Third, we explore optimizing the serialization of the entire tree. Finally, we present results from benchmarking these optimizations against a Python database [3]. 
 
 
 \section{Data Structure}
@@ -71,7 +72,6 @@ Searches are performed on ranges for any subset of the d dimensions, by passing 
 
 \section{Design}
 
-\subsection{Goals}
 The main goal of HODOR is to allow efficient range queries of very large
 datasets with an arbitrary number of dimensions. We designed the structure to
 perform on machines with a limited amount of very fast memory, and a large
@@ -90,7 +90,7 @@ time we had for the project, so we did not attempt to include those techniques
 in HODOR.
 
 \subsection{Optimization Methods}
-\subsubsection{Range B-Trees}
+\subsection{Range B-Trees}
 
 The standard data structures used for implementing many table-style databases
 are the B Tree, and its cousin, the B+ Tree. As a quick overview, a B tree is a
@@ -194,7 +194,6 @@ that can be stored at each node.
 \caption{The number of forwards and backwards seeks involved with range queries varies with the size of the data stored in the orthogonal range tree. While backwards seeks are far more costly (10x) than forward seeks, they are far less in number, and decrease with larger data size.}
 \label{fig:figure2}
 \end{figure}
-\subsection{Application to Buzhug Database}
 We will now examine the complexity of a search on a fully formed BORT, in terms
 of disk reads. The algorithm for searching in a node is as follows, in
 pseudocode. Here, \texttt{ranges} is a dictionary of the ranges to be sorted,
@@ -230,15 +229,19 @@ A low level language would allow us to specify the exact block size used by the 
 
 \subsection{Optimality of Serialization}
 
-\subsection{Application to Buzhug Database}
-
-An initial goal of our Pythonic implementation of the orthogonal range tree was to integrate the structure seamlessly with an existing Python database--namely, Buzhug. Buzhug is lightweight and stores its data on-disk in in a hierarchical structure. Initial testing of this integration on generated data sets showed that orthogonal range trees are impractical on small data sets. The overhead of generating the tree outweighs any possible performance benefits; ordinary queries are also frequently slower on orthogonal range trees built over small data sets than on the original list of data. However, HODOR is asymptotically less costly than a simple linear search; with larger data sets, such as those found in large data centers, HODOR would likely function comparatively more quickly. Integration of HODOR into large databases--feasible because HODOR stores the orthogonal range tree on disk--would thus be a highly practical implementation scenario.
-
 
 
 \subsection{Total Time}
 
+
+
 \subsection{Disk Reads}
+
+
+
+\subsection{Application to Buzhug Database}
+
+An initial goal of our Pythonic implementation of the orthogonal range tree was to integrate the structure seamlessly with an existing Python database--namely, Buzhug. Buzhug is lightweight and stores its data on-disk in in a hierarchical structure. Initial testing of this integration on generated data sets showed that orthogonal range trees are impractical on small data sets. The overhead of generating the tree outweighs any possible performance benefits; ordinary queries are also frequently slower on orthogonal range trees built over small data sets than on the original list of data. However, HODOR is asymptotically less costly than a simple linear search; with larger data sets, such as those found in large data centers, HODOR would likely function comparatively more quickly. Integration of HODOR into large databases--feasible because HODOR stores the orthogonal range tree on disk--would thus be a highly practical implementation scenario.
 
 \section{Conclusion}
 
@@ -247,9 +250,13 @@ An initial goal of our Pythonic implementation of the orthogonal range tree was 
 
 \noindent
 
-\begin{description}
+\begin{enumerate}[1]
 
-\item item
+\item Demaine, Erik. Lecture 3, February 23, 2012. N.p.: \\ http://courses.csail.mit.edu/6.851/spring14/scribe/lec3.pdf, n.d. PDF.
 
-\end{description}
+\item Kaler, Tim, and Oscar Moll. Spatial Data Structures - Performance Comparision. N.p.: \\ http://tfk.mit.edu/pdf/2drangesearch\_datastructures.pdf, n.d. PDF.
+
+\item "Buzhug, a Pure-Python Database Engine." SourceForge. N.p., n.d. Web. 14 May 2014. \\ $<$http://buzhug.sourceforge.net/$>$.
+
+\end{enumerate}
 \end{document}
