@@ -137,13 +137,26 @@ class Serializer:
         if position < 0:
             position = self._get_block_count() + position
         position = self.num_blocks - position - 1
+
+        bs = False
         if self.pos > position:
-            self.back_seeks += 1
+            bs = True
+
+        seek_start = time.time()
+
         self._seek(position)
         self.pos = position
         node = self._load_node()
-        node.serializer = self
 
+        seek_end = time.time()
+        if bs:
+            self.back_seeks += 1
+            self.back_seek_time += seek_end - seek_start
+        else:
+            self.normal_seeks += 1
+            self.normal_seek_time += seek_end - seek_start
+
+        node.serializer = self
         return node
 
 

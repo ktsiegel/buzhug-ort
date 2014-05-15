@@ -33,7 +33,7 @@ def build_tree(data, B, serializer):
                     not the same in every data item.')
 
     # Now that we've got leaves, let's build their parents, recursively.
-    root = build_upwards(data, 0, B, RangeLeaf, serializer)
+    build_upwards(data, 0, B, RangeLeaf, serializer)
 
     # should be done serializing
     serializer.flush()

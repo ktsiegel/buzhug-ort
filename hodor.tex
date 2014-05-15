@@ -217,65 +217,28 @@ a recursive disk layout where the order for a single recursion is children,
 linked trees of parents, parents. 
 
 % move fig 1 here
-Hodor serializes the nodes in the same order as they are created. In the
-recursion, we serialize the children, the linked subtrees, and finally the
-parents. Each child is serialized before its parent. Each node is serialized
-immediately after its linked subtree in the next dimension. This forms a series
-of levels, where each node and its linked subtree fall in the same level, and
-the node's children and parent fall in the levels before and after,
-respectively [FIGURE 1]. The leaves of the tree in the first dimension are in
-the first level, at the head of the file, and the root of the same tree is in
-the last level, the last node in the file. 
+Hodor serializes the nodes in the same order that they are created. In the
+recursion for a set of children, all children are serialized first, followed by
+the linked subtree for each parent node, followed by the node itself. Each child
+is serialized before its parent, and each node is serialized immediately after
+its linked subtree in the next dimension. The resulting stream of serialized
+data can be thought of as a series of levels. For any dimension, each node falls
+in the same level as all of its siblings and everything in its linked subtree.
+All of the node's children and their linked subtrees fall in the level below,
+and the node's parent falls in the level above [FIGURE 1]. 
+
+All leaves of the tree in the first dimension are in the lowest first-dimension
+level, and are at the bottom of the serializer's stack. The root of the same
+tree is in the last level, at the top of the stack.
 
 % move fig 2 here
 Once we finish building the tree, we flush the file contents to disk in reverse
-order. This way, each node will fall after all of its ancestors [FIGURE 2]. Then, if we
-traverse downwards from a node, as we do in a range query, we will always read
-forward through the file. 
+order. This way, each node will fall after all of its ancestors [FIGURE 2].
+Then, if we traverse downwards from a node, as we do in a range query, we will
+always read forward through the file. 
 
-\section{Results}
+\section{Analysis}
 
-\subsection{Optimality of Serialization}
-
-
-
-\begin{figure}[b!]
-\centering
-\begin{tikzpicture}
-	\begin{semilogxaxis}[
-		xlabel=Data Size (\# of entries),ylabel=\# of Seeks]
-
-	\addplot[color=blue,mark=*] coordinates {
-		(1024,66681)
-		(4096,83658)
-		(16384,65676)
-		(65536,61205)
-		(262144,54509)
-	};
-	\addplot[color=red,mark=*] coordinates {
-		(1024,6022)
-		(4096,1504)
-		(16384,918)
-		(65536,740)
-		(262144,664)
-	};
-	\legend{$Forward\ seeks$,$Backward\ seeks$}
-	\end{semilogxaxis}%
-\end{tikzpicture}%
-\caption{The number of forwards and backwards seeks involved with range queries varies with the size of the data stored in the orthogonal range tree. While backwards seeks are far more costly (10x) than forward seeks, they are far less in number, and decrease with larger data size.}
-\label{fig:figure2}
-\end{figure}
-\subsection{Application to Buzhug Database}
-
-
-
-\section{Results}
-
-\subsection{Optimality of Serialization}
-
-We chose to implement HODOR in Python--namely, in conjunction with the Buzhug Python database. Our initial decision allowed for the rapid implementation of the on-disk orthogonal range tree; however, the performance of our database was hindered by our choice of language. As a high-level scripting language, Python does not allow for low-level memory management of data, in contrast to a language such as C. Additionally, inherent aspects of Python such as dynamic typing and a lack of pointer use result in additional overhead. We hypothesize that an implementation of the orthogonal range tree in a low-level language such as C or C++ that allows memory management would allow for faster tree construction and query times. 
-
-A low level language would allow us to specify the exact block size used by the B+ tree on which the orthogonal range tree is built. This block size could be attenuated to the cache block size on the particular machine on which the orthogonal range tree is stored. As such, when a new block is moved into the cache, no space is wasted. Given that queries on the orthogonal range tree move mostly in the forward direction, the proportion of cache hits would increase. Furthermore, nodes could have the same size as the block size optimal for the machine. When the orthogonal range tree is in serialized format, exactly one entire node will be read into the cache at a time allowing for more efficient traversal of the tree structure.
 
 \subsection{BORTs}
 
@@ -285,6 +248,7 @@ is as follows, in pseudocode. Here, \ms{ranges} is a dictionary of the
 ranges to be sorted, indexed by the name of each range's dimension. The BORT has
 $n$ total elements, $d$ dimensions, and a branching factor of $B$.
 
+\begin{verbatim}
 \textsc{RangeQuery}(Ranges, Dimension): \\
     start, end <- Ranges\[Dimension\] \\
     
@@ -295,6 +259,7 @@ $n$ total elements, $d$ dimensions, and a branching factor of $B$.
 
     Recurse on child containing start \\
     Recurse on child containing end
+\end{verbatim}
 
 In the base case, the node is in the last dimension, and the function is reduced
 to a \ms{get\_range} call. \ms{get\_range} is a function which returns all
@@ -324,8 +289,38 @@ of a BORT makes $O(\log_B^d n + k)$ reads from the disk. In the sections below,
 we will analyze how we can bound the \textit{types} of disk reads we have to
 make.
 
+\begin{figure}[b!]
+\centering
+\begin{tikzpicture}
+	\begin{semilogxaxis}[
+		xlabel=Data Size (\# of entries),ylabel=\# of Seeks]
+
+	\addplot[color=blue,mark=*] coordinates {
+		(1024,66681)
+		(4096,83658)
+		(16384,65676)
+		(65536,61205)
+		(262144,54509)
+	};
+	\addplot[color=red,mark=*] coordinates {
+		(1024,6022)
+		(4096,1504)
+		(16384,918)
+		(65536,740)
+		(262144,664)
+	};
+	\legend{$Forward\ seeks$,$Backward\ seeks$}
+	\end{semilogxaxis}%
+\end{tikzpicture}%
+\caption{The number of forwards and backwards seeks involved with range queries varies with the size of the data stored in the orthogonal range tree. While backwards seeks are far more costly (10x) than forward seeks, they are far less in number, and decrease with larger data size.}
+\label{fig:figure2}
+\end{figure}
+
 \subsection{Optimality of Serialization}
 
+We chose to implement HODOR in Python--namely, in conjunction with the Buzhug Python database. Our initial decision allowed for the rapid implementation of the on-disk orthogonal range tree; however, the performance of our database was hindered by our choice of language. As a high-level scripting language, Python does not allow for low-level memory management of data, in contrast to a language such as C. Additionally, inherent aspects of Python such as dynamic typing and a lack of pointer use result in additional overhead. We hypothesize that an implementation of the orthogonal range tree in a low-level language such as C or C++ that allows memory management would allow for faster tree construction and query times. 
+
+A low level language would allow us to specify the exact block size used by the B+ tree on which the orthogonal range tree is built. This block size could be attenuated to the cache block size on the particular machine on which the orthogonal range tree is stored. As such, when a new block is moved into the cache, no space is wasted. Given that queries on the orthogonal range tree move mostly in the forward direction, the proportion of cache hits would increase. Furthermore, nodes could have the same size as the block size optimal for the machine. When the orthogonal range tree is in serialized format, exactly one entire node will be read into the cache at a time allowing for more efficient traversal of the tree structure.
 \subsection{Application to Buzhug Database}
 
 An initial goal of our Pythonic implementation of the orthogonal range tree was to integrate the structure seamlessly with an existing Python database--namely, Buzhug. Buzhug is lightweight and stores its data on-disk in in a hierarchical structure. Initial testing of this integration on generated data sets showed that orthogonal range trees are impractical on small data sets. The overhead of generating the tree outweighs any possible performance benefits; ordinary queries are also frequently slower on orthogonal range trees built over small data sets than on the original list of data. However, HODOR is asymptotically less costly than a simple linear search; with larger data sets, such as those found in large data centers, HODOR would likely function comparatively more quickly. Integration of HODOR into large databases--feasible because HODOR stores the orthogonal range tree on disk--would thus be a highly practical implementation scenario.

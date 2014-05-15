@@ -51,7 +51,7 @@ class LinecacheSerializer(LineSerializer):
 
     def _load_node(self, pos=None):
         # unenscape newline characters and unpickle
-        pos = self.num_blocks - pos 
+        pos = self.num_blocks - pos
         line = linecache.getline(self.filename, pos)
         line = line.replace('\\n', '\n')
         #line = self.lines.next().replace('\\n', '\n')

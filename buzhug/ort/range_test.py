@@ -1,11 +1,7 @@
 import os, random, time, tree
 from serializer.line_serializer import LineSerializer
-from serializer.lincache_serializer import LinecacheSerializer
-
-test_serializer = LinecacheSerializer
 
 def build_test():
-    return
     data = []
 
     for j in range(1000):
@@ -15,7 +11,7 @@ def build_test():
     tree_file = 'test-tree.hodor'
     if os.path.isfile(tree_file):
         os.remove(tree_file)
-    serializer = test_serializer(tree_file)
+    serializer = LineSerializer(tree_file)
 
     root1 = tree.build_tree(data, 28, serializer)
     root2 = root1.link()
@@ -88,69 +84,72 @@ def build_test():
             and data_item[2][1] <= end]
     assert len(result) == len(root3.get_range_data(start, end))
 
+def unit_search_test():
+    search(100, 100, 10000)
+    assert False
 
-def search_test():
+def unit_test():
     return
-    data = []
     B = 2**6
     for m in range(6):
-        num_query = 2**(3 + (5-m) * 2)
-        num_items = 2**(10 + m * 2)
+        nq = 2**(3 + (5-m) * 2)
+        ni = 2**(10 + m * 2)
+        search(B, nq, ni)
 
-        for i in range(num_items):
-            item = [(dimension, random.randrange(-1000, 1000))
-                    for dimension in ['x', 'y', 'z']]
-                    #for dimension in ['x']]
-            data.append(item)
+def search(B, num_query, num_items):
+    data = []
 
-        tree_file = 'test-tree-2.hodor'
-        if os.path.isfile(tree_file):
-            os.remove(tree_file)
-        serializer = LineSerializer(tree_file)
+    for i in range(num_items):
+        item = [(dimension, random.randrange(-1000, 1000))
+                for dimension in ['x', 'y', 'z']]
+                #for dimension in ['x']]
+        data.append(item)
 
-        root = tree.build_tree(data, B, serializer)
+    tree_file = 'test-tree-2.hodor'
+    if os.path.isfile(tree_file):
+        os.remove(tree_file)
+    serializer = LineSerializer(tree_file)
 
-        ranges = []
-        start = time.time()
-        for i in range(num_query):
-            ranges = {d: (random.randrange(-1000, 0),
-                         random.randrange(0, 1000))
-                        for d in ['x', 'y', 'z']}
-                        #for d in ['x']}
-            result = root.range_query(ranges)
-            real_result = []
+    root = tree.build_tree(data, B, serializer)
 
-            for d in data:
-                incl = True
-                for key in ranges:
-                    dk = next(i[1] for i in d if i[0] == key)
-                    if dk < ranges[key][0] \
-                            or dk > ranges[key][1]:
-                        incl = False
-                if incl:
-                    real_result.append(d)
+    ranges = []
+    start = time.time()
+    for i in range(num_query):
+        ranges = {d: (random.randrange(-1000, 0),
+                     random.randrange(0, 1000))
+                    for d in ['x', 'y', 'z']}
+        result = root.range_query(ranges)
+        real_result = []
 
-            if len(real_result) != len(result):
-                print 'ranges:', ranges
-                print 'result:', len(result), 'should be:', len(real_result), 'items'
+        for d in data:
+            incl = True
+            for key in ranges:
+                dk = next(i[1] for i in d if i[0] == key)
+                if dk < ranges[key][0] \
+                        or dk > ranges[key][1]:
+                    incl = False
+            if incl:
+                real_result.append(d)
 
-                result = [i[:3] for i in result]
-                missing = [i for i in real_result if i not in result]
-                missing = map(lambda res: tuple(i[1] for i in res), missing)
-                print 'should have been in the result:', missing
+        if len(real_result) != len(result):
+            print 'ranges:', ranges
+            print 'result:', len(result), 'should be:', len(real_result), 'items'
 
-                extra = [i for i in result if i not in real_result]
-                extra = map(lambda res: tuple(i[1] for i in res), extra)
-                print 'should not have been in the result:', extra
+            result = [i[:3] for i in result]
+            missing = [i for i in real_result if i not in result]
+            missing = map(lambda res: tuple(i[1] for i in res), missing)
+            print 'should have been in the result:', missing
 
-            assert len(real_result) == len(result)
+            extra = [i for i in result if i not in real_result]
+            extra = map(lambda res: tuple(i[1] for i in res), extra)
+            print 'should not have been in the result:', extra
 
-        total = time.time() - start
-        print num_query, 'queries on', num_items, 'items took', total, 'seconds'
+        assert len(real_result) == len(result)
 
-        print serializer.normal_seeks, 'forward seeks averaged',\
-            10**6 * serializer.normal_seek_time / serializer.normal_seeks, 'microseconds each'
-        print serializer.back_seeks, 'back seeks averaged',\
-            10**6 * serializer.back_seek_time / serializer.back_seeks, 'microseconds each'
+    total = time.time() - start
+    print num_query, 'queries on', num_items, 'items took', total, 'seconds'
 
-    assert False
+    print serializer.normal_seeks, 'forward seeks averaged',\
+        10**6 * serializer.normal_seek_time / serializer.normal_seeks, 'microseconds each'
+    print serializer.back_seeks, 'back seeks averaged',\
+        10**6 * serializer.back_seek_time / serializer.back_seeks, 'microseconds each'
