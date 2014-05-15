@@ -91,7 +91,46 @@ serializer
 
 \subsection{Node serialization}
 
-Orthogonal range tree nodes hold a constant number of values. 
+In order to store range trees on disk, we require an efficient method to
+serialize and deserialize the data structure. In Hodor, we represent a Python
+\texttt{RangeTree} instance as a list of serialized nodes, which may be
+instances of \texttt{RangeNode} or \texttt{RangeLeaf}. This list is stored in a
+``tree file", which can be written to and read by a \texttt{Serializer} class. 
+
+During preprocessing, when building the tree from datapoints,
+\texttt{Serializer} is initialized in write mode to build the tree file.
+\texttt{Serializer} in write mode exposes a \texttt{dumps(node)} method that
+takes in a node instance, serializes the node, and appends it to the tree file.
+This method also assigns the node instance a pointer into the tree file, which
+is the number of nodes appended previously to it. 
+
+Once the tree is fully built, we call \texttt{Serializer.flush()}, which
+flushes the tree file to disk. From this point onwards, \texttt{Serializer} can
+be used to read the tree.
+
+In read mode, \texttt{Serializer.loads(pointer)} can be called to deserialize a
+single node into a Python node instance, given its pointer into the tree file.
+So, to load the child of a node instance, we simply store the child's tree file
+pointer as an attribute of the parent. \texttt{loads} is implemented by seeking
+the pointer in the tree file and reading out a single node's worth of bytes.
+
+% maybe some of this should go into Implementation details maybe something
+% about cPickle vs struct
+The seeking method varies by serializer. In Hodor, we test two main node
+serialization methods. The first is using a delimiter, such as a newline
+character, between nodes. This is convenient because it allows us to support
+arbitrarily sized datapoint values. In addition, Python is able to perform
+specific line reads quickly, by using either an iterator on the file or a
+linecache [CITATION, f.lines() iterator, linecache]. 
+
+The second method we use is to pack nodes into fixed-length strings, which we
+call ``blocks". Each node in a range tree stores a constant number of values,
+including min, max, and child pointers. This allows us to serialize each node
+as a block, as long as we know the maximum sizes of these values. The block
+method makes seeking efficient because it allows us to calculate exact offsets
+between \texttt{Serializer}'s current byte position in the file and a given
+node's pointer. However, this method also limits the amount and type of data
+that can be stored at each node. 
 
 \subsection{Tree serialization}
 
