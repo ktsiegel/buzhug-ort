@@ -277,30 +277,20 @@ A low level language would allow us to specify the exact block size used by the 
 
 We will now examine the complexity of a search on a fully formed BORT, in terms
 of disk reads. The algorithm for performing a range query on a (non-leaf) node
-is as follows, in pseudo-Python. Here, \ms{ranges} is a dictionary of the
+is as follows, in pseudocode. Here, \ms{ranges} is a dictionary of the
 ranges to be sorted, indexed by the name of each range's dimension. The BORT has
 $n$ total elements, $d$ dimensions, and a branching factor of $B$.
 
-\begin{verbatim}
-
-def range_query(ranges):
-    start, end = ranges[self.dimension]
+\textsc{RangeQuery}(Ranges, Dimension): \\
+    start, end <- Ranges\[Dimension\] \\
     
-    if self.is_last_dimension:
-        return self.get_range(start, end)
+    if IS\_LAST\_DIMENSION: \\
+        return \textsc{GetRange}(start, end) \\
 
-    start_index = self.child_containing(start)
-    end_index = self.child_containing(end)
-    
-    results = []
+    \textsc{GetResultsFor}(children\_in\_range(start, end)) \\
 
-    for i in range(start_index, end_index):
-        results += self.children[i].linked_tree.range_query(ranges)
-
-    results += self.children[end_index].range_query(ranges)
-    results += self.children[start_index].range_query(ranges)
-
-\end{verbatim}
+    Recurse on child containing start \\
+    Recurse on child containing end
 
 In the base case, the node is in the last dimension, and the function is reduced
 to a \ms{get\_range} call. \ms{get\_range} is a function which returns all
