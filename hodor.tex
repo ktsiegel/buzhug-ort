@@ -82,16 +82,21 @@ Goals:
 
 \subsection{Goals}
 The main goal of HODOR is to allow efficient range queries of very large
-datasets with an arbitrary number of dimensions. Furthermore, we designed the
-structure to perform on machines with a limited amount of very fast memory, and
-a large amount of memory on a comparatively slow hard disk. As such, we wanted
-minimize the time spent reading data from disk, but were generally unconcerned
-with in-memory comparison operations. This meant optimizing for two factors:
-minimizing total disk reads, and chaining consecutive disk accesses so that they
-can be executed as efficiently as possible. 
+datasets with an arbitrary number of dimensions. We designed the structure to
+perform on machines with a limited amount of very fast memory, and a large
+amount of memory on a comparatively slow hard disk. As such, we wanted minimize
+the time spent reading data from disk, but were generally unconcerned with
+in-memory comparison operations. We optimized for this in two ways: first, by
+minimizing total disk reads, and second, by chaining consecutive disk accesses
+so that they can be executed as efficiently as possible. 
+
+HODOR requires a relatively long time to construct its tree and serialize it
+to disk, so the results presented in this paper are for queries on static data
+only. In addition, although there have been r
 
 \subsection{Optimization Methods}
 \subsubsection{Range B-Trees}
+
 The standard data structures used for implementing many table-style databases
 are the B Tree, and its cousin, the B+ Tree. As a quick overview, a B tree is a
 search tree with a branching factor of $B$; i.e., each node points to at most
@@ -110,10 +115,11 @@ Range Trees (BORT). Each node $n$ in a BORT has a dimension $d$, a set of $B$
 child pointers sorted in $d$, and a pointer to another BORT containing all of
 the data points contained in $n$'s subtree, known as $n$'s \textit{linked tree}.
 When $n$ is loaded into memory, it brings with it all $B$ child pointers and one
-link pointer. 
-
-\subsection{B trees}
-
+link pointer. Therefore, a search on $n$ data points indexed in $d$ dimensions
+touches $O(log^d_B n)$ nodes, which requires loading $O(log^d_B n)$ chunks from
+disk. However, as we will describe below, not all disk accesses are equal, and
+we can achieve better in-practice running times by laying out serialized nodes
+intelligently on disk.
 
 \subsection{Node serialization}
 
@@ -159,7 +165,6 @@ node's pointer. However, this method also limits the amount and type of data
 that can be stored at each node. 
 
 \subsection{Tree serialization}
-
 
 
 
