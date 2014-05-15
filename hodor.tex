@@ -68,7 +68,6 @@ An orthogonal range tree is an extension to a B+ tree in which each node in the 
 The tree is constructed in preprocessing, which takes $O(n \cdot \log_B^{d-1} n)$ time. The user can specify any d dimensions for the dataset to be indexed on.
 A dimension can be any continuous, comparable data type which can be mapped to a number.
 Searches are performed on ranges for any subset of the d dimensions, by passing the range tree a set of {dimension: (range start, range end)} pairs. Open-ended range queries are not explicitly supported, but can be performed in practice by setting one of the range bounds to $\pm\infty$.
-<<<<<<< HEAD
 
 \section{Results}
 
@@ -93,9 +92,6 @@ A low level language would allow us to specify the exact block size used by the 
 \section{Introduction}
 Goals:
 	I/O Optimization
-=======
->>>>>>> b46b80a2515aca023eaa77816548e8f10f764a27
-    
 
 
 \section{Design}
@@ -197,13 +193,24 @@ that can be stored at each node.
 
 We will now examine the complexity of a search on a fully formed BORT, in terms
 of disk reads. The algorithm for searching in a node is as follows, in
-pseudocode. Here, \texttt{ranges} is a dictionary of the ranges to be sorted,
+pseudo-Python. Here, \texttt{ranges} is a dictionary of the ranges to be sorted,
 indexed by the name of each range's dimension.
 
 \begin{verbatim}
 
 def range_query(ranges):
     start, end = ranges[self.dimension]
+    
+    start_index = self.child_containing(start)
+    end_index = self.child_containing(end)
+    
+    results = []
+
+    for i in range(start_index, end_index):
+        results += self.children[i].linked_tree.range_query(ranges)
+
+    results += self.children[end_index].range_query(ranges)
+    results += self.children[start_index].range_query(ranges)
 
 \end{verbatim}
 
