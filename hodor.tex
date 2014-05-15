@@ -164,7 +164,32 @@ that can be stored at each node.
 \section{Results}
 
 \subsection{Optimality of Serialization}
+\begin{figure}[b!]
+\centering
+\begin{tikzpicture}
+	\begin{semilogxaxis}[
+		xlabel=Data Size (\# of entries),ylabel=\# of Seeks]
 
+	\addplot[color=blue,mark=*] coordinates {
+		(1024,66681)
+		(4096,83658)
+		(16384,65676)
+		(65536,61205)
+		(262144,54509)
+	};
+	\addplot[color=red,mark=*] coordinates {
+		(1024,6022)
+		(4096,1504)
+		(16384,918)
+		(65536,740)
+		(262144,664)
+	};
+	\legend{$Forward\ seeks$,$Backward\ seeks$}
+	\end{semilogxaxis}%
+\end{tikzpicture}%
+\caption{The number of forwards and backwards seeks involved with range queries varies with the size of the data stored in the orthogonal range tree. While backwards seeks are far more costly (10x) than forward seeks, they are far less in number, and decrease with larger data size.}
+\label{fig:figure2}
+\end{figure}
 \subsection{Application to Buzhug Database}
 
 An initial goal of our Pythonic implementation of the orthogonal range tree was to integrate the structure seamlessly with an existing Python database--namely, Buzhug. Buzhug is lightweight and stores its data on-disk in in a hierarchical structure. Initial testing of this integration on generated data sets showed that orthogonal range trees are impractical on small data sets. The overhead of generating the tree outweighs any possible performance benefits; ordinary queries are also frequently slower on orthogonal range trees built over small data sets than on the original list of data. However, HODOR is asymptotically less costly than a simple linear search; with larger data sets, such as those found in large data centers, HODOR would likely function comparatively more quickly. Integration of HODOR into large databases--feasible because HODOR stores the orthogonal range tree on disk--would thus be a highly practical implementation scenario.
