@@ -68,13 +68,6 @@ An orthogonal range tree is an extension to a B+ tree in which each node in the 
 The tree is constructed in preprocessing, which takes $O(n \cdot \log_B^{d-1} n)$ time. The user can specify any d dimensions for the dataset to be indexed on.
 A dimension can be any continuous, comparable data type which can be mapped to a number.
 Searches are performed on ranges for any subset of the d dimensions, by passing the range tree a set of {dimension: (range start, range end)} pairs. Open-ended range queries are not explicitly supported, but can be performed in practice by setting one of the range bounds to $\pm\infty$.
-
-
-
-
-\section{Introduction}
-Goals:
-	I/O Optimization
     
 
 
