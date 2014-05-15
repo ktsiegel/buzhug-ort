@@ -191,6 +191,45 @@ that can be stored at each node.
 
 \subsection{Tree serialization}
 
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=0.8\textwidth]{fig1.eps}
+    \caption{Awesome Image}
+\end{figure}
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=1\textwidth]{fig2.eps}
+    \caption{Awesome Image}
+\end{figure}
+
+Tree serialization is executed while preprocessing the datapoints into a tree, so
+that the order of nodes in the tree file is the same as the order in which we
+preprocess them. Building the tree is done recursively, from the bottom up, and
+returns the root's tree file pointer. We start with a set of children. If these
+are leaves, then we sort them on their values. Next, we determine their parents
+by partitioning the children into clusters of size $B$. For each of these
+parents, we make a recursive call to build the parent's linked tree in the next
+dimension, if there is one. If the number of parents is one, then we are done
+since the single parent is the root, so we return its pointer.  Otherwise, we
+use the parents as the set of children in the next recursive call. 
+
+If we serialize the nodes in the same order that we build the tree, we'll have
+a recursive disk layout where the order for a single recursion is children,
+linked trees of parents, parents. This forms a series of levels. A ``level" in
+the tree file is the complete level of some tree and all of that level's linked
+subtrees in the next dimension [FIGURE 1]. 
+
+Once we finish building the tree, we flush the file contents to disk. If we do
+this directly, however, each child will come before its parent on disk. Then,
+if we want to traverse downwards from a node, as we do in a range query, we
+will be forced to read the node itself, then seek backwards over the bytes we
+just read in order to read the node's child. So, we avoid this by writing the
+nodes in reverse order during a flush. Then, in the final tree file, the root
+is the first node and each parent will come before all of its children [FIGURE
+2]. Note that although this maintains the level structure from building the
+tree, each individual level is now written in reverse order in the tree file.
+
+
 \section{Results}
 
 \subsection{Optimality of Serialization}
@@ -230,36 +269,6 @@ indexed by the name of each range's dimension.
 \subsection{Application to Buzhug Database}
 
 
-\begin{figure}[p]
-    \centering
-    \includegraphics[width=0.8\textwidth]{fig1.eps}
-    \caption{Awesome Image}
-\end{figure}
-\begin{figure}[p]
-    \centering
-    \includegraphics[width=1\textwidth]{fig2.eps}
-    \caption{Awesome Image}
-\end{figure}
-
-Tree serialization is done while preprocessing the datapoints into a tree, so
-the order of nodes in the tree file is the same as the order in which we
-preprocess them. Building the tree is done recursively, from the bottom up. We
-start by sorting the leaves on the first dimension. Next, we determine the
-parents by partitioning the leaves into clusters of size $B$. For each of these
-parents, we make a recursive call to build the parent's linked tree in the next
-dimension, if there is one. If the number of parents is one, then we are done
-since this is the root. Otherwise, we recurse on the parents, which are already sorted.  
-
-If we serialize the nodes in the same order that we build the tree, we'll have
-a recursive disk layout where the serialization order for a single recursion is
-children, linked trees of parents, parents. This forms distinct levels in the
-tree file, where level 0 is the leaves of the first dimension, level 1 is those
-leaves' parents and their linked trees, and so on [FIGURE 1]. Within each level
-of a tree, the nodes are sorted in order.
-
-Once we finish building the tree, we flush the file contents to disk. During this stage, we 
-
-This serialization order forms a layout on disk that can be partitioned into different levels, according to the levels of the tree [FIGURE 1 and 2].  
 
 \section{Results}
 
