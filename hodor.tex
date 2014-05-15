@@ -19,6 +19,7 @@
 \definecolor{mygreen}{rgb}{0,0.6,0}
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
+\newcommand{\ms}{\texttt}
 
 \lstset{ %
   backgroundcolor=\color{white},   % choose the background color
@@ -69,6 +70,31 @@ An orthogonal range tree is an extension to a B+ tree in which each node in the 
 The tree is constructed in preprocessing, which takes $O(n \cdot \log_B^{d-1} n)$ time. The user can specify any d dimensions for the dataset to be indexed on.
 A dimension can be any continuous, comparable data type which can be mapped to a number.
 Searches are performed on ranges for any subset of the d dimensions, by passing the range tree a set of {dimension: (range start, range end)} pairs. Open-ended range queries are not explicitly supported, but can be performed in practice by setting one of the range bounds to $\pm\infty$.
+<<<<<<< HEAD
+
+\section{Results}
+
+We found and formatted two major data sets of two different sizes. The first data set corresponds to New York City parking garages, and the second data set contains entries for every documented instance of crime in the city of Chicago since the year 2001. The second data set is two orders of magnitude larger than the first data set. Both data sets contain multiple numeric fields apart from location on which range queries may be performed. We analyzed the performance of the altered Buzhug database by performing a wide variety of range queries and examining the performance gains.
+
+
+\section{Analysis}
+
+We chose to implement HODOR in Python--namely, in conjunction with the Buzhug Python database. Our initial decision allowed for the rapid implementation of the on-disk orthogonal range tree; however, the performance of our database was hindered by our choice of language. As a high-level scripting language, Python does not allow for low-level memory management of data, in contrast to a language such as C. Additionally, inherent aspects of Python such as dynamic typing and a lack of pointer use result in additional overhead. We hypothesize that an implementation of the orthogonal range tree in a low-level language such as C or C++ that allows memory management would allow for faster tree construction and query times. 
+
+A low level language would allow us to specify the exact block size used by the B+ tree on which the orthogonal range tree is built. This block size could be attenuated to the cache block size on the particular machine on which the orthogonal range tree is stored. As such, when a new block is moved into the cache, no space is wasted. Given that queries on the orthogonal range tree move mostly in the forward direction, the proportion of cache hits would increase. Furthermore, nodes could have the same size as the block size optimal for the machine. When the orthogonal range tree is in serialized format, exactly one entire node will be read into the cache at a time allowing for more efficient traversal of the tree structure.
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% NEW BEGINNINGS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\section{Introduction}
+Goals:
+	I/O Optimization
 
 \section{Design}
 
@@ -101,19 +127,22 @@ search performance, each node should load as many children as it can into memory
 at once. $B$ can be tweaked to optimize for cache sizes on different machines.
 A B-Plus tree is an extension of the B tree in which all data is stored at the
 lowest level of the tree (on the ``leaves") and each leaf has a pointer to its
-immediate successor leaf. 
+immediate successor leaf, \ms{prev}. These successor pointers allow easy range
+queries in one dimension by searching for the maximum value of the range and
+chaining together successor leaves until the leaf containing the min value is
+reached.
 
 Orthogonal range trees were a structure covered in 6.851 which allow $O(\log^d
 n + k)$ range queries on $d$ dimensions, where $k$ is the number of data items
-returned by the  For HODOR, we extend the B-plus tree
-structure with orthogonal, recursive linked trees to create a B-plus Orthogonal
-Range Trees (BORT). Each node $n$ in a BORT has a dimension $d$, a set of $B$
-child pointers sorted in $d$, and a pointer to another BORT containing all of
-the data points contained in $n$'s subtree, known as $n$'s \textit{linked tree}.
-When $n$ is loaded into memory, it brings with it all $B$ child pointers and one
-link pointer. Therefore, a search on $n$ data points indexed in $d$ dimensions
+returned by the query. For HODOR, we extend the B-plus tree structure with
+orthogonal, recursive linked trees to create a B-plus Orthogonal Range Trees
+(BORT). Each node $n$ in a BORT has a dimension $d$, a set of $B$ child pointers
+sorted in $d$, and a pointer to another BORT containing all of the data points
+contained in $n$'s subtree, known as $n$'s \textit{linked tree}.  When $n$ is
+loaded into memory, it brings with it all $B$ child pointers and one link
+pointer.  Therefore, a search on $n$ data points indexed in $d$ dimensions
 touches $O(log^d_B n)$ nodes, which requires loading $O(log^d_B n)$ chunks from
-disk. However, as we will describe below, not all disk accesses are equal, and
+disk.  However, as we will describe below, not all disk accesses are equal, and
 we can achieve better in-practice running times by laying out serialized nodes
 intelligently on disk.
 
@@ -198,13 +227,8 @@ We will now examine the complexity of a search on a fully formed BORT, in terms
 of disk reads. The algorithm for searching in a node is as follows, in
 pseudocode. Here, \texttt{ranges} is a dictionary of the ranges to be sorted,
 indexed by the name of each range's dimension.
+\subsection{Application to Buzhug Database}
 
-\begin{verbatim}
-
-def range_query(ranges):
-    start, end = ranges[self.dimension]
-
-\end{verbatim}
 
 \begin{figure}[p]
     \centering
@@ -226,6 +250,61 @@ We chose to implement HODOR in Python--namely, in conjunction with the Buzhug Py
 A low level language would allow us to specify the exact block size used by the B+ tree on which the orthogonal range tree is built. This block size could be attenuated to the cache block size on the particular machine on which the orthogonal range tree is stored. As such, when a new block is moved into the cache, no space is wasted. Given that queries on the orthogonal range tree move mostly in the forward direction, the proportion of cache hits would increase. Furthermore, nodes could have the same size as the block size optimal for the machine. When the orthogonal range tree is in serialized format, exactly one entire node will be read into the cache at a time allowing for more efficient traversal of the tree structure.
 
 \subsection{BORTs}
+
+We will now examine the complexity of a search on a fully formed BORT, in terms
+of disk reads. The algorithm for performing a range query on a (non-leaf) node
+is as follows, in pseudo-Python. Here, \ms{ranges} is a dictionary of the
+ranges to be sorted, indexed by the name of each range's dimension. The BORT has
+$n$ total elements, $d$ dimensions, and a branching factor of $B$.
+
+\begin{verbatim}
+
+def range_query(ranges):
+    start, end = ranges[self.dimension]
+    
+    if self.is_last_dimension:
+        return self.get_range(start, end)
+
+    start_index = self.child_containing(start)
+    end_index = self.child_containing(end)
+    
+    results = []
+
+    for i in range(start_index, end_index):
+        results += self.children[i].linked_tree.range_query(ranges)
+
+    results += self.children[end_index].range_query(ranges)
+    results += self.children[start_index].range_query(ranges)
+
+\end{verbatim}
+
+In the base case, the node is in the last dimension, and the function is reduced
+to a \ms{get\_range} call. \ms{get\_range} is a function which returns all
+leaves in the range in this node's subtree. It is accomplished by searching for
+the leaf containing \ms{end}, and walking backwards along the link's \ms{prev}
+pointers until the leaf containing the minimum value is found. This operation
+takes $O(\log_B n + \frac{k}{B})$ reads, since each leaf contains $B$ elements.
+
+Otherwise, the algorithm makes three recursive calls. First, the node finds all
+$O(B)$ of its children which are fully contained within the range on its
+dimension. It recurses on the \ms{linked\_node} for each one, essentially
+initiating a new range query on $O(\frac{n}{B})$ elements and $d - 1$
+dimensions. Next, it recurses with the same query on the two child nodes
+containing \ms{start} and \ms{end}, each of which is a BORT with $\frac{n}{B}$
+elements total.
+
+Not shown is the logic at the leaf level. However, once \ms{range\_query} is
+called on a leaf, the leaf can either return some subset of its data (requiring
+no more disk reads) or recurse on a linked leaf in the next dimension (requiring
+exactly one disk read per dimension, for $O(d)$ disk reads total).
+
+In total, each higher-level recursive call involves $O(B)$ disk reads, and
+recurses on $(O(\frac{n}{B})$ elements in its own dimension and $O(n)$ elements
+in the next dimension; the base case involves a maximum of $O(\log_B n +
+\frac{k}{B})$ reads. Therefore, running the entire algorithm from the root node
+of a BORT makes $O(\log_B^d n + k)$ reads from the disk. In the sections below,
+we will analyze how we can bound the \textit{types} of disk reads we have to
+make.
 
 \subsection{Optimality of Serialization}
 
