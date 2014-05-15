@@ -214,20 +214,24 @@ in the next recursive call.
 
 If we serialize the nodes in the same order that we build the tree, we'll have
 a recursive disk layout where the order for a single recursion is children,
-linked trees of parents, parents. This forms a series of levels. A ``level" in
-the tree file is the complete level of some tree and all of that level's linked
-subtrees in the next dimension [FIGURE 1]. 
+linked trees of parents, parents. 
 
-Once we finish building the tree, we flush the file contents to disk. If we do
-this directly, however, each child will come before its parent on disk. Then,
-if we want to traverse downwards from a node, as we do in a range query, we
-will be forced to read the node itself, then seek backwards over the bytes we
-just read in order to read the node's child. So, we avoid this by writing the
-nodes in reverse order during a flush. Then, in the final tree file, the root
-is the first node and each parent will come before all of its children [FIGURE
-2]. Note that although this maintains the level structure from building the
-tree, each individual level is now written in reverse order in the tree file.
+% move fig 1 here
+Hodor serializes the nodes in the same order as they are created. In the
+recursion, we serialize the children, the linked subtrees, and finally the
+parents. Each child is serialized before its parent. Each node is serialized
+immediately after its linked subtree in the next dimension. This forms a series
+of levels, where each node and its linked subtree fall in the same level, and
+the node's children and parent fall in the levels before and after,
+respectively [FIGURE 1]. The leaves of the tree in the first dimension are in
+the first level, at the head of the file, and the root of the same tree is in
+the last level, the last node in the file. 
 
+% move fig 2 here
+Once we finish building the tree, we flush the file contents to disk in reverse
+order. This way, each node will fall after all of its ancestors [FIGURE 2]. Then, if we
+traverse downwards from a node, as we do in a range query, we will always read
+forward through the file. 
 
 \section{Results}
 
