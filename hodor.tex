@@ -78,13 +78,39 @@ Goals:
     
 
 
-\section{Implementation}
+\section{Design}
 
-In python
-serializer
+\subsection{Goals}
+The main goal of HODOR is to allow efficient range queries of very large
+datasets with an arbitrary number of dimensions. Furthermore, we designed the
+structure to perform on machines with a limited amount of very fast memory, and
+a large amount of memory on a comparatively slow hard disk. As such, we wanted
+minimize the time spent reading data from disk, but were generally unconcerned
+with in-memory comparison operations. This meant optimizing for two factors:
+minimizing total disk reads, and chaining consecutive disk accesses so that they
+can be executed as efficiently as possible. 
 
+\subsection{Optimization Methods}
+\subsubsection{Range B-Trees}
+The standard data structures used for implementing many table-style databases
+are the B Tree, and its cousin, the B+ Tree. As a quick overview, a B tree is a
+search tree with a branching factor of $B$; i.e., each node points to at most
+$B$ children. The logic behind the B tree's design is that, since the act of
+loading children from disk into memory is often the bottleneck on database
+search performance, each node should load as many children as it can into memory
+at once. $B$ can be tweaked to optimize for cache sizes on different machines.
+A B-Plus tree is an extension of the B tree in which all data is stored at the
+lowest level of the tree (on the ``leaves") and each leaf has a pointer to its
+immediate successor leaf. 
 
-\section{Optimization methods}
+Orthogonal range trees were a structure covered in 6.851 which allow $O(\log^d
+n)$ range queries on $d$ dimensions. For HODOR, we extend the B-plus tree
+structure with orthogonal, recursive linked trees to create a B-plus Orthogonal
+Range Trees (BORT). Each node $n$ in a BORT has a dimension $d$, a set of $B$
+child pointers sorted in $d$, and a pointer to another BORT containing all of
+the data points contained in $n$'s subtree, known as $n$'s \textit{linked tree}.
+When $n$ is loaded into memory, it brings with it all $B$ child pointers and one
+link pointer. 
 
 \subsection{B trees}
 
