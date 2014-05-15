@@ -241,6 +241,26 @@ indexed by the name of each range's dimension.
     \caption{Awesome Image}
 \end{figure}
 
+Tree serialization is done while preprocessing the datapoints into a tree, so
+the order of nodes in the tree file is the same as the order in which we
+preprocess them. Building the tree is done recursively, from the bottom up. We
+start by sorting the leaves on the first dimension. Next, we determine the
+parents by partitioning the leaves into clusters of size $B$. For each of these
+parents, we make a recursive call to build the parent's linked tree in the next
+dimension, if there is one. If the number of parents is one, then we are done
+since this is the root. Otherwise, we recurse on the parents, which are already sorted.  
+
+If we serialize the nodes in the same order that we build the tree, we'll have
+a recursive disk layout where the serialization order for a single recursion is
+children, linked trees of parents, parents. This forms distinct levels in the
+tree file, where level 0 is the leaves of the first dimension, level 1 is those
+leaves' parents and their linked trees, and so on [FIGURE 1]. Within each level
+of a tree, the nodes are sorted in order.
+
+Once we finish building the tree, we flush the file contents to disk. During this stage, we 
+
+This serialization order forms a layout on disk that can be partitioned into different levels, according to the levels of the tree [FIGURE 1 and 2].  
+
 \section{Results}
 
 \subsection{Optimality of Serialization}
