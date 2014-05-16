@@ -152,20 +152,9 @@ the pointer in the tree file and reading out a single node's worth of bytes.
 % maybe some of this should go into Implementation details maybe something
 % about cPickle vs struct
 The seeking method varies by serializer. In Hodor, we test two main node
-serialization methods. The first is using a delimiter, such as a newline
-character, between nodes. This is convenient because it allows us to support
-arbitrarily sized datapoint values. In addition, Python is able to perform
-specific line reads quickly, by using either an iterator on the file or a
-linecache [CITATION, f.lines() iterator, linecache]. 
-
-The second method we use is to pack nodes into fixed-length strings, which we
-call ``blocks". Each node in a range tree stores a constant number of values,
-including min, max, and child pointers. This allows us to serialize each node
-as a block, as long as we know the maximum sizes of these values. The block
-method makes seeking efficient because it allows us to calculate exact offsets
-between \texttt{Serializer}'s current byte position in the file and a given
-node's pointer. However, this method also limits the amount and type of data
-that can be stored at each node. 
+serialization methods. The first is to use a delimiter, such as a newline
+character, between nodes. The second is to pack nodes into fixed-length
+strings, called ``blocks". 
 
 \subsection{Tree serialization}
 
@@ -317,7 +306,30 @@ make.
 
 \subsection{Node serialization}
 
-% fixed-length block vs delimited 
+In Hodor, we test two methods of node serialization: delimited strings versus
+fixed-length blocks. Both of these methods see a trade-off between convenience
+and efficiency. 
+
+Delimited strings are convenient because they support arbitrarily sized
+datapoint values. In addition, the delimited method may help to keep down the
+range tree's space overhead, since nodes are packed tightly. However, seeks may
+be costly in performance, since a node's exact byte position in the file cannot
+be calculated without reading from the file and counting delimiter characters.
+This may be mitigated by Python's line iterator or linecache features
+[CITATION, f.lines() iterator, linecache]. 
+
+Loading nodes from fixed-length blocks should see a lower performance cost than
+from delimited strings. When nodes are stored as blocks, a node's exact byte
+position can be calculated from its file pointer, so Hodor can seek to a node
+directly. However, fixed-length blocks are less flexible in space usage than
+delimited strings. Each node in a range tree stores a constant number of
+values, such as min, max, and child pointers. If we bound the size for each
+value, we can serialize each node with efficient space usage. However, this
+would limit the type and size of data that can be queried upon. To support
+arbitrarily sized data, smaller blocks would have to be padded to the block
+size, using extra space. 
+
+% stats on block serializer vs line serializer here?
 
 \subsection{Tree serialization}
 
