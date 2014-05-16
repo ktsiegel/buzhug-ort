@@ -21,9 +21,6 @@ class LineSerializer(Serializer):
         self.pos += 1
         return pickle.loads(line)
 
-    def _load_block(self):
-        return self.lines.next()
-
     def _seek(self, position):
         offset = position - self.pos
         if offset < 0:
