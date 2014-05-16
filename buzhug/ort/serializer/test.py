@@ -1,9 +1,10 @@
 import os
 
 from line_serializer import LineSerializer, LinecacheSerializer
+from block_serializer import BlockSerializer
 from node_class import Node
 
-serializer = LinecacheSerializer
+serializer = LinecacheSerializer 
 
 def basic_flush_test():
     tree_file = 'test.hodor'
@@ -39,11 +40,12 @@ def basic_flush_test():
     s = serializer(tree_file)
 
     serialized = s.loads(node1.pos)
-    print serialized.__dict__
     assert serialized.min == 10
     assert serialized.serializer == s
 
     serialized = s.loads(node2.pos)
     assert serialized.max == 100
     assert serialized.serializer == s
+
+    assert s._get_block_count() == 2
 

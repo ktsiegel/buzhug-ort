@@ -42,7 +42,6 @@ class Serializer:
         self.back_seek_time = 0
         self.normal_seek_time = 0
 
-
     """
     Methods common to all serializers, no matter how serialization of one node
     is done
@@ -86,7 +85,9 @@ class Serializer:
         else:
             self.f.close()
             self.num_blocks = self.pos
+            os.rename(self.filename, self.filename + '-tmp')
             self._reverse_write()
+            os.remove(self.filename + '-tmp')
 
         self.pos = 0
 
@@ -97,13 +98,13 @@ class Serializer:
         """
         Reverse the order of nodes currently saved to the tree file
         """
-        # longs are 8 bytes long in C
-        long_size = 8
+        # long size in bytes in C
+        long_size = struct.calcsize('l') 
 
         # copy the tree file in reverse to a tmp file first
-        writer = open(self.filename + '-tmp', 'a+')
+        self.f = open(self.filename, 'a')
         # start at the end of the file
-        reader = open(self.filename, 'r')
+        reader = open(self.filename + '-tmp', 'r')
         reader.seek(0, 2)
         for i in range(self.num_blocks):
             # copy one block at a time, backwards
@@ -111,14 +112,14 @@ class Serializer:
             packed = reader.read(long_size)
             block_size = struct.unpack('l', packed)[0]
             reader.seek(-1 * (block_size + long_size), 1)
-            writer.write(reader.read(block_size))
+            block = reader.read(block_size)
+            self._dump_block(block)
             # only write the block contents into the reversed file, not the
             # size of the block
             reader.seek(-1 * (block_size), 1)
 
         reader.close()
-        writer.close()
-        os.rename(self.filename+ '-tmp', self.filename)
+        self.f.close()
 
     def reset(self):
         """
@@ -164,6 +165,9 @@ class Serializer:
     Methods defined by different serialization methods - must override these in Serializer
     subclasses
     """
+    def _dump_block(self, block):
+        self.f.write(block)
+
     def _dump_node(self, node):
         """
         In append mode, given an instance of a node, serialize it and
