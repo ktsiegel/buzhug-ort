@@ -124,23 +124,71 @@ class RangeNode(object):
         while si > 0 and self.children[si - 1][1] >= start:
             si -= 1
 
+        # ------------------------------------- \begin{JANK} -------------------------------------#
+        #'''
+        recursed = False
+        end_child = None
+        start_child = None
+
+        # 1: Load child containing end of range.
+        if ei + 1 < len(self.children):
+            c = self.children[ei + 1]
+            if end >= c[1]:
+                end_child = self.load_child(c)
+                recursed = True
+
+        # 2: do all of the fully-contained children
+        if ei >= si:
+            for i in reversed(xrange(si, ei + 1)):
+                c = self.load_child(self.children[i])
+                # We know the child has a link because it's the same dimension
+                results.extend(c.link().range_query(nranges))
+
+        # 3: recurse on child containing start of range
+        if si > 0 and ((si - 1 == ei + 1 and not recursed)
+                or (si - 1 != ei + 1)):
+            c = self.children[si - 1]
+            if start <= c[2]:
+                start_child = self.load_child(c)
+                if not recursed:
+                    results.extend(start_child.range_query(ranges))
+                    return results
+
+
+        # 4. Trying something janky: If there are two distinct children to
+        # recurse down, join the left child's children onto the right child's
+        # children list, and recurse on only the right child.
+        if end_child is not None:
+            # JANK ALERT
+            if type(start_child) is RangeNode:
+                end_child.children = start_child.children + end_child.children
+                print 'Hodor'
+            elif start_child is not None:
+                results.extend(start_child.range_query(ranges))
+            results.extend(end_child.range_query(ranges))
+
+        #'''
+        # ------------------------------------- \end{JANK} ---------------------------------------#
+
+        # Old, safe code.
+        '''
         # 1: do all of the fully-contained children
         if ei >= si:
             for i in reversed(xrange(si, ei + 1)):
                 c = self.load_child(self.children[i])
-                #recursed_on.append(self.children[i])
                 # We know the child has a link because it's the same dimension
                 results.extend(c.link().range_query(nranges))
 
         recursed = False
+
         # 2: recurse on child containing end of range.
         if ei + 1 < len(self.children):
             c = self.children[ei + 1]
             if end >= c[1]:
                 child = self.load_child(c)
-                recursed = True 
+                recursed = True
                 results.extend(child.range_query(ranges))
-        
+
         if si <= 0:
             return results
 
@@ -150,5 +198,6 @@ class RangeNode(object):
             if start <= c[2]:
                 child = self.load_child(c)
                 results.extend(child.range_query(ranges))
+        '''
 
         return results

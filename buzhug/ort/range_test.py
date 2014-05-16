@@ -85,7 +85,7 @@ def build_test():
     assert len(result) == len(root3.get_range_data(start, end))
 
 def unit_search_test():
-    search(100, 100, 10000)
+    search(10, 100, 10000)
     assert False
 
 def unit_test():
