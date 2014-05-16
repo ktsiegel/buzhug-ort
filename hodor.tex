@@ -220,7 +220,23 @@ a node, as we do in a range query, we will always read forward through the file.
 
 \section{Analysis}
 
-% front and back seeks model
+In our analysis, we will focus on measuring disk reads in two categories.
+Assuming we are reading blocks from one continuous file on disk, \textit{forward
+seeks} are defined as reads from a location after the current file pointer, so
+that the pointer's value is increased. \textit{Back seeks} are reads from a
+location before the current pointer, so that the pointer's value must be
+increased. In our slow disk-fast memory model, forward seeks are, in general,
+much faster than back seeks. When accessing file blocks in sequential order, the
+blocks can be loaded into memory at speeds approaching the disk's maximum read
+speed, which is on the order of 100MB/s on modern hard drives. However, if a
+file block from position $i-1$ is accessed immediately after the file block at
+$i$, the disk must make most of complete revolution before the new block can be
+loaded. On a typical drive spinning at 7200 RPM, this revolution takes over 8
+milliseconds.
+
+In addition to minimizing total disk reads, we tried to minimize back seeks
+wherever possible when designing HODOR. We will analyze our data structures in
+terms of both total reads and total back seeks in the sections following.
 
 \subsection{BORTs}
 
@@ -294,7 +310,9 @@ make.
 	\legend{$Forward\ seeks$,$Backward\ seeks$}
 	\end{semilogxaxis}%
 \end{tikzpicture}%
-\caption{The number of forwards and backwards seeks involved with range queries varies with the size of the data stored in the orthogonal range tree. While backwards seeks are far more costly (10x) than forward seeks, they are far less in number, and decrease with larger data size.}
+\caption{
+    The number of forwards and backwards seeks involved with range queries varies with the size of the data stored in the orthogonal range tree. While backwards seeks are far more costly (10x) than forward seeks, they are far less in number, and decrease with larger data size.
+}
 \label{fig:figure2}
 \end{figure}
 

@@ -2,7 +2,7 @@ import os, random, time, tree
 from serializer.line_serializer import LineSerializer, LinecacheSerializer
 from serializer.block_serializer import BlockSerializer
 
-test_serializer = LineSerializer 
+test_serializer = BlockSerializer
 
 def build_test():
     return
@@ -90,10 +90,8 @@ def build_test():
 
 def unit_search_test():
     search(10, 100, 10000)
-    assert False
 
 def unit_test():
-    return
     B = 2**6
     for m in range(6):
         nq = 2**(3 + (5-m) * 2)
