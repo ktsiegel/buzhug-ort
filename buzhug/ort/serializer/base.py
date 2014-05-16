@@ -144,12 +144,12 @@ class Serializer:
             bs = True
 
         seek_start = time.time()
-
         self._seek(position)
+        seek_end = time.time()
+
         self.pos = position
         node = self._load_node()
 
-        seek_end = time.time()
         if bs:
             self.back_seeks += 1
             self.back_seek_time += seek_end - seek_start

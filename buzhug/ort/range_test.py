@@ -1,7 +1,11 @@
 import os, random, time, tree
-from serializer.line_serializer import LineSerializer
+from serializer.line_serializer import LineSerializer, LinecacheSerializer
+from serializer.block_serializer import BlockSerializer
+
+test_serializer = LineSerializer 
 
 def build_test():
+    return
     data = []
 
     for j in range(1000):
@@ -11,7 +15,7 @@ def build_test():
     tree_file = 'test-tree.hodor'
     if os.path.isfile(tree_file):
         os.remove(tree_file)
-    serializer = LineSerializer(tree_file)
+    serializer = test_serializer(tree_file)
 
     root1 = tree.build_tree(data, 28, serializer)
     root2 = root1.link()
@@ -95,6 +99,7 @@ def unit_test():
         nq = 2**(3 + (5-m) * 2)
         ni = 2**(10 + m * 2)
         search(B, nq, ni)
+    assert False
 
 def search(B, num_query, num_items):
     data = []
@@ -108,7 +113,7 @@ def search(B, num_query, num_items):
     tree_file = 'test-tree-2.hodor'
     if os.path.isfile(tree_file):
         os.remove(tree_file)
-    serializer = LineSerializer(tree_file)
+    serializer = test_serializer(tree_file)
 
     root = tree.build_tree(data, B, serializer)
 
