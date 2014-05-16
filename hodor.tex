@@ -193,30 +193,29 @@ in the next recursive call.
     \caption{Awesome Image}
 \end{figure}
 
-If we serialize the nodes in the same order that we build the tree, we'll have
-a recursive disk layout where the order for a single recursion is children,
-linked trees of parents, parents. 
-
 % move fig 1 here
 Hodor serializes the nodes in the same order that they are created. In the
 recursion for a set of children, all children are serialized first, followed by
-the linked subtree for each parent node, followed by the node itself. Each child
-is serialized before its parent, and each parent is serialized immediately after
-its linked subtree in the next dimension. The resulting stream of serialized
-data can be thought of as a series of levels. For any dimension, each node falls
-in the same level as all of its siblings and everything in its linked subtree.
-All of the node's children and their linked subtrees fall in the level below,
-and the node's parent falls in the level above [FIGURE 1]. 
+the linked subtree for each parent node, followed by the node itself. Each
+child is serialized before its parent, and each parent is serialized
+immediately after its linked subtree in the next dimension. This forms a series
+of levels [FIGURE 1]. For any dimension, each node falls in the same level as
+all of its siblings. The node's linked subtree in the next dimension also falls
+in this same level. All of the node's children and their linked subtrees fall
+in the level below, and the node's parent falls in the level above. 
 
-All leaves of the tree in the first dimension are in the lowest first-dimension
-level, and are at the bottom of the serializer's stack. The root of the same
-tree is in the last level, at the top of the stack.
+All leaves of the tree in the first dimension are in that tree's lowest level,
+and are therefore serialized first. The root of the same tree is in the tree's
+highest level, and is therefore serialized last. The leaves and root of each
+linked subtree follow the same pattern. 
 
 % move fig 2 here
-Once we finish building the tree, we flush the file contents to disk in reverse
-order, pulling everything off the top of the stack. This way, each node will
-fall after all of its ancestors [FIGURE 2]. Then, if we traverse downwards from
-a node, as we do in a range query, we will always read forward through the file. 
+Once we finish building the tree, we flush the nodes in the tree file to disk
+in reverse order of serialization. This way, each node will fall after all of
+its ancestors [FIGURE 2]. In the final disk layout, the root of the tree in the
+first dimension is the first node in the file, and the leaves of the same tree
+are the last in the file. This layout allows us to always read forward through
+the file as we traverse downwards from the root, as we do in a range query.
 
 \section{Analysis}
 
