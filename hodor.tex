@@ -346,39 +346,82 @@ size, using extra space.
 The efficiency of tree serialization in terms of back seeks depends on the path
 taken by a range query. We want to order the node accesses during a range query
 so that we do as many consecutive forward seeks as possible, while minimizing
-back seeks. Here we review the typical range query implementation and analyze
-its worst-case back seek count. 
+back seeks. Here we review a typical implementation of the range query
+recursion and analyze its worst-case back seek count. 
+
+% treat base case of the recursion separately
 
 A range query algorithm works recursively as it traverses down a tree in some
 dimension, treating each node as the root of its subtree. For each of the
-root's children, the range query determines if the child's range lies
-completely within the desired range. If it does, then the algorithm recurses on
-the child's linked node in the next dimension. Otherwise, the algorithm
-recurses on the child itself. 
+root's children, the range query either makes a recursive call on the child's
+linked subtree, the child itself, or not at all. If the child's range lies
+completely within the queried interval, the algorithm recurses on the child's
+linked node, the root of the child's linked subtree in the next dimension. If
+this isn't the case, and if the child's range contains the start- or end-point
+of the queried interval, the algorithm recurses on the child itself. Otherwise,
+the algorithm makes no other recursive call. 
 
-Recall that the nodes are structured into recursive levels on disk, where each
-level contains a node, all of its siblings, and its linked subtree in the next
-dimension. The number of back seeks we do during each recursion depends on the
-order in which nodes of the same level are accessed and the order in which the
-levels themselves are accessed. Each level is sorted in reverse order, so if a
-node is accessed after a left sibling, it will cost one back seek. For each
-tree, the levels themselves are sorted in order from highest to lowest, so if
-an ancestor is accessed after the node itself, it will cost one back seek. 
+As discussed above, the nodes are structured into recursive levels on disk,
+where each level contains a node, all of its siblings, and its linked subtree
+in the next dimension. The number of back seeks we do during each recursion
+depends on the order in which nodes of the same level are accessed and the
+order in which the levels themselves are accessed. Each level is sorted in
+reverse order, so if a node is accessed after its left sibling, it will cost
+one back seek. For each tree, the levels themselves are sorted in order from
+highest to lowest, so if an ancestor is accessed after the node itself, it will
+also cost one back seek. 
 
 Because a node and all of its siblings lie in the same level, when the range
-query accesses the root's children, it does all of its work in the same level.
-Each level is sorted in reverse order in the disk layout, so if the range query
+query accesses the root's children, all work is done in the same level.  Each
+level is sorted in reverse order in the disk layout, so if the range query
 accesses the children from right to left, then no back seeks are needed to load
 the root's children. Finally, because the range query always traverses
 downwards, we never return to the root's level once we access the children's
 level, so no back seeks are needed to jump between levels either.
 
 Next we analyze the back seeks needed for a recursive call on a child. There
-are two possible types of recursive calls. Either we recurse on a child's
-linked subtree, or we recurse on the child itself. In the first case, since
-each child's linked subtree falls in the same level as the child and comes
-immediately after the child in the disk layout, the recursive call stays within
-the same level as the child. In the second case...
+are two possible types of recursive calls. Either we recurse on the child's
+linked subtree, or we recurse on the child itself. 
+
+In the first case, since each child's entire linked subtree falls in the same
+level as the child, the recursive call to the linked subtree, and every other
+one called by it, will stay within the same level as the child. Also, since the
+linked subtree comes immediately after the child in the disk layout, we can
+make each recursive call to a linked subtree directly after loading the child
+to avoid back seeks within the same level. Thus, the first case costs nothing
+in back seeks.
+
+In the second case, the range query recurses on the current child as the root,
+and will therefore access that child's children. According to the level
+structure of the disk layout, the current child's children lie in the next
+level. Then, if the range query ever has to access the current child's level
+again, a back seek will be needed to return from the child's children, or from
+even further down the tree, back up to the child's level. This happens when the
+recursive call on the current child is followed by a recursive call on one of
+the child's siblings, which lie in the same level as the child itself. Then, if
+a recursive call of the second case is made on a child and is followed by a
+recursive call on one of the child's siblings, it will cost one back seek to
+jump between the recursive calls. In other words, for the current root, all
+recursive calls of the second case will count for one back seek, except for the
+very last call made. 
+
+We claim that according to the given algorithm, there will be at most
+$O(\log_B^dn)$ many back seeks from recursive calls of the second case. \\
+
+% proof here
+
+The given range query algorithm requires back seeks because of the accesses to
+a level that we have already previously traversed past. If we can eliminate
+these accesses from the naive algorithm, it will be possible to get no back
+seeks at all. To achieve this, we need to ensure that by the time we traverse
+downward from some node, all work that will ever be done in that node's level
+has already finished. The work done on that node's level is the work involving
+that node, its children, and its linked subtree in the next dimension. Here, we
+propose a modified algorithm that accomplishes this and analyze its complexity
+in back seeks.
+
+
+
 
 \subsection{Results}
 
@@ -386,6 +429,9 @@ the same level as the child. In the second case...
 
 \section{Conclusion}
 
+% note about our model: we've dealt with things in terms of time and space
+% before, and we dealt with disk accesses in cache-obliviousness, but this is
+% cool ... and stuff
 
 \section{References}
 
