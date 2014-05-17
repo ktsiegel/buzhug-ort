@@ -408,10 +408,12 @@ jump between the recursive calls. In other words, for the current root, all
 recursive calls of the second case will count for one back seek, except for the
 very last call made. 
 
-We claim that according to the given algorithm, there will be at most
-$O(\log_B^dn)$ many back seeks from recursive calls of the second case. \\
-
-% proof here
+\begin{lemma}
+    According to the given algorithm, there will be at most $O(\log_B^dn)$ many
+    back seeks.
+\end{lemma}
+\begin{proof}
+\end{proof}
 
 The given range query algorithm requires back seeks because of the accesses to
 a level that we have already previously traversed past. If we can eliminate
@@ -440,7 +442,7 @@ current set, and recurses on the union of the children.
 To show that the modified algorithm does not require any back seeks, we first
 prove that for any recursive call, the nodes in the current set are all
 siblings. If this is true, then all the nodes in the current set will fall
-within the same level.  Then, if we do our work for each sibling in reverse
+within the same level. Then, if we do our work for each sibling in reverse
 order, the order in which the siblings are laid out on disk, we will avoid any
 back seeks between nodes in the current set.
 
