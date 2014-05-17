@@ -89,9 +89,11 @@ def build_test():
     assert len(result) == len(root3.get_range_data(start, end))
 
 def unit_search_test():
-    search(10, 100, 10000)
+    search(10, 1, 15000)
+    assert False
 
 def unit_test():
+    return
     B = 2**6
     for m in range(6):
         nq = 2**(3 + (5-m) * 2)
@@ -101,6 +103,7 @@ def unit_test():
 
 def search(B, num_query, num_items):
     data = []
+    dims = ['x','y','z']
 
     for i in range(num_items):
         item = [(dimension, random.randrange(-1000, 1000))
@@ -156,3 +159,4 @@ def search(B, num_query, num_items):
         10**6 * serializer.normal_seek_time / serializer.normal_seeks, 'microseconds each'
     print serializer.back_seeks, 'back seeks averaged',\
         10**6 * serializer.back_seek_time / serializer.back_seeks, 'microseconds each'
+    print len(result)/B

@@ -59,42 +59,57 @@ Katie Siegel (ksiegel@mit.edu)\\[2ex]
 \begin{document}
 
 \maketitle
+
+\vfill
+
+\begin{abstract}
+
+    Hodor hodor hodor, Hodor hodor hodor hodor hodor. Hodor hodor Hodor
+    \textit{Hodor Hodor} hodor hodor hodor Hodor. Hodor, "hodor hodor," hodor
+    hodor Hodor hodor hodor. Hodor hodor hodor Hodor hodor Hodor.
+
+\end{abstract}
+
 \clearpage
 
 \section{Introduction}
 
-Many web applications today require data queries in two or more dimensions. For
-instance, a point of interest on a map has latitude and longitude coordinates,
-and may be indexed by other comparable values. These include start and end
-times for an event, price ranges for a business, or average user rating for a
-service. Databases typically support efficient range querying on one primary
-key at a time. Multi-dimensional range queries, however, are expensive and
-require several linear passes of the dataset in most implementations. On the
-other hand, orthogonal range trees with fractional cascading can improve range
-queries in $d$ dimensions to $O(\log^{d-1} n + k)$ time, where $k$ is the size
-of the result set [1]. 
+Web applications today often require batch queries on large datasets in two or
+more dimensions. Databases typically support efficient range querying on one
+primary key at a time. Multi-dimensional range queries, however, are expensive,
+and common implementations require $O(n)$ time. 
 
-In-memory orthogonal range tree implementations have been able to achieve
-significant query time speedup [2]. These can be used to
-extend a database for smaller datasets. Most datasets, however, are too large
-to fit in memory, and therefore require an on-disk implementation. To this end,
-we present HODOR, an on-disk Python implementation of range-trees. 
+As we saw in class, orthogonal range trees can achieve range queries on $d$
+dimensions in $O(\log^{d} n + k)$ time, where $k$ is the size of the result set
+\cite{lecture}. These trees have been implemented in-memory with success,
+including as an extension to the popular database Redis \cite{redis}. In-memory
+databases are useful for smaller datasets, or for companies with enough
+resources to operate expansive, expensive data centers. However, for data sets
+which are too large to fit in main memory, magnetic hard disks remain the most
+economical long-term storage options. On-disk data structures present a unique
+set of challenges, and require a solution built from the ground up. To this end,
+we designed HODOR, an on-disk Python implementation of orthogonal range-trees. 
 
-The main obstacle in an on-disk implementation of orthogonal range trees is the
+The main obstacle to an on-disk implementation of orthogonal range trees is the
 added overhead in disk access time. Therefore, in this paper, we explore
-different methods of optimizing disk I/O accesses. First, we present
-optimizations on the range tree structure itself. Second, we propose methods of
-optimizing individual node serialization. Third, we explore optimizing the
-serialization of the entire tree. Finally, we present results from benchmarking
-these optimizations against a Python database [3]. 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% NEW BEGINNINGS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%aww
+different methods of optimizing disk I/O accesses, in terms of disk read
+frequency and overall query time. First, we present our overall design, and
+specific modifications we made to the standard ORT structure. Second, we
+describe our serialization protocols for the data structure. Third, we analyze
+the runtime per query in terms of both total disk accesses and a new metric,
+\textit{back seeks}, which we introduce here. We describe how we achieved more
+efficient overall runtimes by eliminating back seeks from our data structure's
+query function.  Finally, we present experimental test data, and discuss how our
+findings from this project may contribute to future work.
 
 \section{Design}
 
+In this section, we detail the design of HODOR, and justify some of the
+decisions we made in the process.
+
 \subsection{Goals}
 
-The main goal of HODOR is to allow efficient range queries of very large
+The primary goal of HODOR is to allow efficient range queries of very large
 datasets with an arbitrary number of dimensions. We designed the structure to
 perform on machines with a limited amount of memory and a large amount of
 storage on a relatively slow hard disk. As such, we wanted to minimize the
@@ -105,35 +120,37 @@ so that they can be executed as efficiently as possible.
 
 HODOR requires a relatively long time to construct its tree and serialize it to
 disk, so the results presented in this paper are for queries on static trees
-only. Although there are techniques, such as range trees with fractional cascading,
-that can achieve a query speedup of a logarithmic factor, the goal here is more
-to determine if we can achieve the same range query bounds on disk, rather than
-to build the fastest structure possible.
+only. In addition, there are well-documented techniques for augmenting range
+trees, such as fractional cascading, which can speed up queries by a logarithmic
+factor. However, the goal of this project was more to determine whether we could
+achieve the same range query bounds on disk as in memory, rather than to build
+the fastest structure possible.
 
 \subsection{Range B-Trees}
 
 The standard data structures used for implementing many table-style databases
-are the B Tree, and its cousin, the B+ Tree. As a quick overview, a B tree is a
+are the B Tree, and its cousin, the B+ Tree. As a quick overview, a B Tree is a
 search tree with a branching factor of $B$; i.e., each node points to at most
-$B$ children. The logic behind the B tree's design is that, since the act of
+$B$ children. The logic behind the B Tree's design is that, since the act of
 loading children from disk into memory is often the bottleneck on database
 search performance, each node should load as many children as it can into memory
 at once. $B$ can be tweaked to optimize for cache sizes on different machines.
-A B-Plus tree is an extension of the B tree in which all data is stored at the
+A B+ Tree is an extension of the B Tree in which all data is stored at the
 leaves of the tree, and each leaf has a pointer to its immediate predecessor
 leaf, \ms{prev}. These predecessor pointers allow easy range queries in one
-dimension by searching for the maximum value of the range and chaining together
-predecessor leaves until the leaf containing the min value is reached.
+dimension: once we find the leaf with the maximum value in the range, we can
+walk backward along the predecessor leaves until we reach the one containing the
+minimum value, and return all leaves touched on the walk.
 
 The orthogonal range tree is a structure covered in 6.851 which allows $O(\log^d
 n + k)$ range queries on $d$ dimensions, where $k$ is the number of data items
-returned by the query. For HODOR, we extend the B-plus tree structure with
-orthogonal, recursive linked trees to create a B-plus Orthogonal Range Trees
-(BORT). Each node $n$ in a BORT has a dimension $d$, a set of $B$ child pointers
-sorted in $d$, and a pointer to another BORT containing all of the data points
-contained in $n$'s subtree, known as $n$'s \textit{linked tree}.  When $n$ is
-loaded into memory, it brings with it all $B$ child pointers and one link
-pointer.  Therefore, a search on $n$ data points indexed in $d$ dimensions
+returned by the query. For HODOR, we extend the B+ Tree structure with
+orthogonal, recursive linked trees to create B+ Orthogonal Range Trees
+(BORTs). Each node $n$ in a BORT has a dimension $d$, a set of $B$ child
+pointers sorted in $d$, and a pointer to another BORT containing all of the data
+points contained in $n$'s subtree, known as $n$'s \textit{linked tree}. When
+$n$ is loaded into memory, it brings with it all $B$ child pointers and one link
+pointer. Therefore, a search on $n$ data points indexed in $d$ dimensions
 touches $O(log^d_B n)$ nodes, which requires $O(log^d_B n)$ disk accesses.
 However, as we will describe below, not all disk accesses are equal, and we can
 achieve better in-practice running times by laying out serialized nodes
@@ -572,13 +589,16 @@ the modified algorithm as a whole, does not require any back seeks.
 
 \section{References}
 
-\begin{enumerate}[1.]
-\item Demaine, Erik. Lecture 3, February 23, 2012. N.p.: \\ http://courses.csail.mit.edu/6.851/spring14/scribe/lec3.pdf, n.d. PDF.
+\begin{thebibliography}{1}
+    
+        \bibitem{lecture} Demaine, Erik. ``Lecture 3,'' February 23, 2012.
+        MIT: \\ http://courses.csail.mit.edu/6.851/spring14/scribe/lec3.pdf,
+        n.d. PDF.
 
-\item Kaler, Tim, and Oscar Moll. Spatial Data Structures - Performance Comparision. N.p.: \\ http://tfk.mit.edu/pdf/2drangesearch\_datastructures.pdf, n.d. PDF.
+        \bibitem{redis} Kaler, Tim, and Oscar Moll. ``Spatial Data Structures -
+        Performance Comparision.'' N.p.: \\
+        http://tfk.mit.edu/pdf/2drangesearch\_datastructures.pdf, 25 May 2012.
+        PDF.
 
-\item "Buzhug, a Pure-Python Database Engine." SourceForge. N.p., n.d. Web. 14 May 2014. \\ $<$http://buzhug.sourceforge.net/$>$.
-
-
-\end{enumerate}
+\end{thebibliography}
 \end{document}

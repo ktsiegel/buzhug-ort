@@ -74,7 +74,7 @@ class RangeLeaf(RangeNode):
         return ret
 
     # Return everything in this leaf for the specified ranges
-    def range_query(self, ranges):
+    def range_query(self, ranges, node=None):
         # If the next dimension is ours, search this leaf.
         if self.dimension in ranges:
             (start, end) = ranges[self.dimension]
@@ -97,8 +97,15 @@ class RangeLeaf(RangeNode):
         # We want to recurse down to the last dimension, and return everything
         # that fits all the ranges. Perform a (d-1)-dimensional query on our
         # linked leaf, and return the union of that result and our range.
+        my_indices = set(i[0] for i in self.get_range_data(start, end,
+            recurse=False))
+
+        bs = self.serializer.back_seeks
+        pos = self.serializer.pos
         their_results = self.link().range_query(nranges)
-        my_indices = set(i[0] for i in self.get_range_data(start, end))
+        print ('Backseek! \n' + str(self) + '\nLast pos was ' +\
+                str(self.serializer.loads(pos - 1))) * \
+                        (self.serializer.back_seeks > bs)
 
         # Check each one of the lower level's results to see if it's included in
         # our range.
