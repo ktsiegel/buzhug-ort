@@ -299,16 +299,6 @@ $n$ total elements, $d$ dimensions, and a branching factor of $B$.
         \EndFunction
     \end{algorithmic}
 \end{algorithm}
-\textsc{RangeQuery}(ranges, dimension): \\
-    start, end $<-$ ranges[dimension] \\
-    
-    if IS\_LAST\_DIMENSION: \\
-        return \textsc{GetRange}(start, end) \\
-
-    \textsc{GetResultsFor}(children\_in\_range(start, end)) \\
-
-    Recurse on child containing start \\
-    Recurse on child containing end
 
 In the base case, the node is in the last dimension, and the function is reduced
 to a \ms{get\_range} call. \ms{get\_range} is a function which returns all
