@@ -3,6 +3,7 @@
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
+\usepackage{amsthm}
 \usepackage{graphicx}
 \usepackage[colorinlistoftodos]{todonotes}
 \usepackage{pslatex}
@@ -19,6 +20,7 @@
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
 \newcommand{\ms}{\texttt}
+\newtheorem*{lemma}{Lemma}
 
 \lstset{ %
   backgroundcolor=\color{white},   % choose the background color
@@ -351,8 +353,9 @@ recursion and analyze its worst-case back seek count.
 
 % treat base case of the recursion separately
 
-A range query algorithm works recursively as it traverses down a tree in some
-dimension, treating each node as the root of its subtree. For each of the
+A range query algorithm starts from the root of the tree in the first dimension
+and works recursively as it traverses down each tree and through the
+dimensions, treating each node as the root of its subtree. For each of the
 root's children, the range query either makes a recursive call on the child's
 linked subtree, the child itself, or not at all. If the child's range lies
 completely within the queried interval, the algorithm recurses on the child's
@@ -420,8 +423,57 @@ that node, its children, and its linked subtree in the next dimension. Here, we
 propose a modified algorithm that accomplishes this and analyze its complexity
 in back seeks.
 
+Like the naive algorithm, the modified algorithm starts at the root of the tree
+in the first dimension. However, rather than recursing on one node at a time,
+the modified algorithm recurses on a set of nodes, or more accurately a set of
+siblings. Similar to before, the algorithm determines which out of the current
+set of nodes cover ranges that fall completely within the queried interval. For
+these nodes, the algorithm makes a recursive call to the linked nodes, as in
+the naive algorithm. However, for the second case of the recursive call, when a
+node in the current set has a range containing the start- or end-point of the
+queried interval, the algorithm does not recurse immediately on that node's
+children. Instead, the algorithm collects the children of all such nodes in the
+current set, and recurses on the union of the children.
 
+% prove that the current set of nodes is all in the same level, so that we can
+% guarantee no back seeks between nodes in the current set
+To show that the modified algorithm does not require any back seeks, we first
+prove that for any recursive call, the nodes in the current set are all
+siblings. If this is true, then all the nodes in the current set will fall
+within the same level.  Then, if we do our work for each sibling in reverse
+order, the order in which the siblings are laid out on disk, we will avoid any
+back seeks between nodes in the current set.
 
+\begin{lemma}
+    For any recursive call during the modified algorithm, the set of nodes that
+    is recursed upon is a set of all siblings.
+\end{lemma}
+\begin{proof}
+    We can prove this by showing that it is an invariant. Assume that the nodes
+    in the set for the current recursion are all siblings. From here, we may
+    recurse on the root of a node's linked subtree or we may recurse on the
+    combined children of some number of nodes in the current set. In either
+    case, any recursive call that we make will be on a set of nodes that are
+    all siblings. We begin the entire range query from a set of one, the root
+    of the tree in the first dimension. Therefore, any recursive call that we
+    make will be upon a set of nodes that are all siblings. 
+\end{proof}
+
+% prove that we never need to come back to this level
+Since we do not require any back seeks between nodes in the current set, the
+only other possible source of back seeks is from the recursive calls. We know
+from the lemma that the current set of nodes for a recursion is in the same
+level. The case when we do a recursive call on one of the nodes' linked
+subtrees is then the same as in the naive algorithm; these do not cost any back
+seeks since we remain in the same level and can do all the recursive calls in
+order of disk layout. 
+
+The other case is when we do a recursive call on the union of some nodes'
+children. In this case, we are accessing the level after the current set's
+level. If we do this recursive call after recursing on the linked subtrees, we
+will never need to return to the current nodes' level, and will therefore not
+need any back seeks following this recursive call. Thus, each recursion, and
+therefore the modified algorithm as a whole, does not require any back seeks.
 
 \subsection{Results}
 
