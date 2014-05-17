@@ -285,14 +285,6 @@ the leaf containing \ms{end}, and walking backwards along the link's \ms{prev}
 pointers until the leaf containing the minimum value is found. This operation
 takes $O(\log_B n + \frac{k}{B})$ reads, since each leaf contains $B$ elements.
 
-Otherwise, the algorithm makes three recursive calls. First, the node finds all
-$O(B)$ of its children which are fully contained within the range on its
-dimension. It recurses on the \ms{linked\_node} for each one, essentially
-initiating a new range query on $O(\frac{n}{B})$ elements and $d - 1$
-dimensions. Next, it recurses with the same query on the two child nodes
-containing \ms{start} and \ms{end}, each of which is a BORT with $\frac{n}{B}$
-elements total.
-
 Not shown is the logic at the leaf level. However, once \ms{range\_query} is
 called on a leaf, the leaf can either return some subset of its data (requiring
 no more disk reads) or recurse on a linked leaf in the next dimension (requiring
@@ -356,12 +348,11 @@ A range query algorithm starts from the root of the tree in the first dimension
 and works recursively as it traverses down each tree and through the
 dimensions, treating each node as the root of its subtree. For each of the
 root's children, the range query either makes a recursive call on the child's
-linked subtree, the child itself, or not at all. If the child's range lies
-completely within the queried interval, the algorithm recurses on the child's
-linked node, the root of the child's linked subtree in the next dimension. If
-this isn't the case, and if the child's range contains the start- or end-point
-of the queried interval, the algorithm recurses on the child itself. Otherwise,
-the algorithm makes no other recursive call. 
+linked subtree, the child itself, or not at all. First, for each child that
+covers a range fully contained within the queried interval, the algorithm
+recurses on the child's linked node, the root of the child's linked subtree in
+the next dimension. Next, it recurses with the same query on the two child
+nodes containing \ms{start} and \ms{end}. 
 
 As discussed above, the nodes are structured into recursive levels on disk,
 where each level contains a node, all of its siblings, and its linked subtree
@@ -374,39 +365,41 @@ highest to lowest, so if an ancestor is accessed after the node itself, it will
 also cost one back seek. 
 
 Because a node and all of its siblings lie in the same level, when the range
-query accesses the root's children, all work is done in the same level.  Each
-level is sorted in reverse order in the file, so if the range query accesses the
-children from max to min (right to left), then no back seeks are needed to load
-the root's children. Finally, the algorithm recurses on several child nodes, for
-which all of the data is located later in the file. Because the range query
-always traverses downwards in the tree, we never return to the root's level once
-we access the children's level.
+query accesses the root's children, all work is done in the same level, the
+level after the root's. Each level is sorted in reverse order in the file, so
+if the range query accesses the children from max to min (right to left), then
+no back seeks are needed to load the root's children. Because the range query
+always traverses downwards, we never return to the root's level once we access
+the children's level.
 
-Next we analyze the back seeks needed for a recursive call on a child node.
-There are two possible types of recursive calls: either we recurse on the
-node's linked subtree, or we recurse on the child node itself. 
+We analyze the back seeks needed for a recursive call on a child by examining
+the node and level access order. There are two possible types of recursive
+calls: either we recurse on the child's linked node when the child is
+completely contained in the queried interval, or we recurse on the child itself
+when the child contains either the \ms{start} or \ms{end} points of the query. 
 
-In the first case, note that the entirety of each node's linked subtree falls in
-the same level as the node, and the subtree occurs immediately after the node in
-the disk layout. Therefore, the recursive call on the subtree stays within the
-same level as the node, and the file pointer only seeks forward. Additionally,
-since the linked subtree immediately follows its node, we can make each
-recursive call to a linked subtree directly after loading the child to avoid
-back seeks within the same level. Thus, a recursion in the first case does not
-require any back seeks.
+In the first case, note that the child's entire linked subtree falls in the
+same level as the child. Therefore, the recursive call on the linked subtree
+stays within the same level as the child. Also, since the linked subtree occurs
+immediately after the child in the disk layout, we can make each recursive call
+to a linked subtree directly after loading the child to avoid back seeks within
+the same level. Thus, a recursive call of the first case costs nothing in back
+seeks.
 
-In the second case, the range query recurses on the current node, in the same
-way described above, and loads the node's children. According to the level
-structure of the tree file, the current node's children all lie in the next
-level, which can be reached by seeking forwards. However, if the range query
-ever has to access the current node's level again, a back seek will be needed to
-return from the children's level, or from even further down the tree.  This
-happens whenever a second-case recursive call on a node is followed by a
-recursive call on one of the node's siblings: the file pointer will follow the
-first node's subtree to a lower level, and will have to jump back up to the
-sibling's level for the second recursion. In other words, for the current root,
-all recursive calls of the second case will count for one back seek, except for
-the very last call made. 
+In the second case, the range query recurses on the current child as the root,
+and as described above, loads that child's children, the ``grandchildren".
+According to the level structure of the disk layout, these grandchildren lie in
+the level directly after the child's level, and can therefore be accessed by
+seeking forwards. However, if the range query ever has to access the child's
+level again, a back seek will be needed to return from the grandchildren's
+level, or a level even further down the tree, back up to the child's level.
+This happens when the recursive call on the current child is followed by a
+recursive call on one of the child's siblings, which lie in the same level as
+the child itself. The recursive call on the current child will end at a level
+later in the disk layout, so the algorithm must spend one back seek to return
+to the sibling's level for the second recursive call. In other words, for the
+current root, if more than one recursive call of the second case, then every
+call except the last will contribute one back seek. 
 
 \begin{lemma}
     According to the given algorithm, there will be at most $O(\log_B^dn)$ many
