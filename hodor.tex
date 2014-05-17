@@ -7,7 +7,6 @@
 \usepackage{amsmath}
 \usepackage{amsthm}
 \usepackage{graphicx}
-\usepackage{algorithmicx}
 \usepackage[colorinlistoftodos]{todonotes}
 \usepackage{pslatex}
 \usepackage[margin=1in]{geometry}
@@ -18,7 +17,17 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{verbatim}
+\usepackage{algorithmicx}
+
+% Algorithms
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\newcommand*\Let[2]{\State #1 $\gets$ #2}
+\algrenewcommand\algorithmicrequire{\textbf{Precondition:}}
+\algrenewcommand\algorithmicensure{\textbf{Postcondition:}}
+
 \usetikzlibrary{automata,topaths}
+
 \definecolor{mygreen}{rgb}{0,0.6,0}
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
@@ -254,16 +263,39 @@ $n$ total elements, $d$ dimensions, and a branching factor of $B$.
 \begin{algorithm}
     \caption{Finding all nodes in ranges in multiple dimensions}
     \begin{algorithmic}[1]
-        \Require{\nod\textsc{Ranges} is a dictionary of (start, end) tuples indexed by
-        dimension, and $d$ is the dimension of the current node.}
+        \Require{\nod\textsc{Ranges} is a dictionary of (start, end) tuples
+            ranges indexed by dimension, $n$ is a node, and $d$ is an integer
+            representation of the dimension $n$ is indexed by -- 0 is the last
+            dimension.}
         \Statex
-        \Function{RangeQuery}{\textsc{Ranges}, $d$}
+        \Function{RangeQuery}{\textsc{Ranges}, $n$, $d$}
             \Let{$start, end$}{Ranges[$d$]}
-            \If{$z_i \neq 0$}
-            \Let{$\delta$}{$\delta + 1$}
+            \If{$d = 0$}
+                \State \Return\Call{GetRange}{$n$, $start$, $end$}
             \EndIf
-          \EndFor
-          \State \Return{$\delta$}
+            
+            \State
+            \Let{$r$}{Null}
+            \Let{$c_L$}{\Call{GetChildContaining}{$start$}}
+            \Let{$c_R$}{\Call{GetChildContaining}{$end$}}
+            \State \Call{Load}{$c_R$}
+            \State
+
+            \ForAll{$c_i$ in \Call{ChildrenInRange}{$n$, $end$,
+                    $start$}}
+                \State \Call{Load}{$c_i$}
+                \Let{$l_i$}{\Call{LinkedTree}{$c_i$}}\Comment{Get the child's linked
+                    subtree}
+                \Let{$r$}{$r$ + \Call{RangeQuery}{\textsc{Ranges}, $l_i$, $d-1$}}
+            \EndFor
+
+            \State
+            \State \Call{Load}{$c_L$}
+            
+            \Let{$r$}{$r$ + \Call{RangeQuery}{$c_R$}}
+            \Let{$r$}{$r$ + \Call{RangeQuery}{$c_L$}}
+
+            \State \Return{$r$}
         \EndFunction
     \end{algorithmic}
 \end{algorithm}
