@@ -32,7 +32,7 @@
 \definecolor{mygreen}{rgb}{0,0.6,0}
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
-\newcommand{\ms}{\texttt}
+\newcommand{\ms}{\ms}
 \newtheorem*{lemma}{Lemma}
 
 \lstset{ %
@@ -64,9 +64,9 @@ Katie Siegel (ksiegel@mit.edu)\\[2ex]
 
 \begin{abstract}
 
-    Hodor hodor hodor, Hodor hodor hodor hodor hodor. Hodor hodor Hodor
-    \textit{Hodor Hodor} hodor hodor hodor Hodor. Hodor, "hodor hodor," hodor
-    hodor Hodor hodor hodor. Hodor hodor hodor Hodor hodor Hodor.
+    HODOR hodor hodor, HODOR hodor hodor hodor hodor. HODOR hodor HODOR
+    \textit{HODOR HODOR} hodor hodor hodor HODOR. HODOR, "hodor hodor," hodor
+    hodor HODOR hodor hodor. HODOR hodor hodor HODOR hodor HODOR.
 
 \end{abstract}
 
@@ -104,7 +104,7 @@ findings from this project may contribute to future work.
 
 \section{Design}
 
-In this section, we detail the design of HODOR, and justify some of the
+In this section, we detail the design of HODOR, and describe some of the
 decisions we made in the process.
 
 \subsection{Goals}
@@ -145,11 +145,11 @@ minimum value, and return all leaves touched on the walk.
 The orthogonal range tree is a structure covered in 6.851 which allows $O(\log^d
 n + k)$ range queries on $d$ dimensions, where $k$ is the number of data items
 returned by the query. For HODOR, we extend the B+ Tree structure with
-orthogonal, recursive linked trees to create B+ Orthogonal Range Trees
-(BORTs). Each node $n$ in a BORT has a dimension $d$, a set of $B$ child
-pointers sorted in $d$, and a pointer to another BORT containing all of the data
-points contained in $n$'s subtree, known as $n$'s \textit{linked tree}. When
-$n$ is loaded into memory, it brings with it all $B$ child pointers and one link
+orthogonal, recursive linked trees to create B+ Orthogonal Range Trees (BORTs).
+Each node $n$ in a BORT has a dimension $d$, a set of $B$ child pointers sorted
+in $d$, and a pointer to another BORT containing all of the data points
+contained in $n$'s subtree, known as $n$'s \textit{linked tree}. When $n$ is
+loaded into memory, it brings with it all $B$ child pointers and one link
 pointer. Therefore, a search on $n$ data points indexed in $d$ dimensions
 touches $O(log^d_B n)$ nodes, which requires $O(log^d_B n)$ disk accesses.
 However, as we will describe below, not all disk accesses are equal, and we can
@@ -159,47 +159,58 @@ intelligently on disk.
 \subsection{Node serialization}
 
 In order to store range trees on disk, we require an efficient method to
-serialize and deserialize the data structure. In Hodor, we represent a Python
-\texttt{RangeTree} instance as a list of serialized nodes, which may be
-instances of \texttt{RangeNode} or \texttt{RangeLeaf}. This list is stored in a
-``tree file", which can be written to and read by a \texttt{Serializer} class. 
+serialize and deserialize the data structure. In HODOR, we represent a Python
+\ms{RangeTree} instance as a list of serialized nodes, which may be instances of
+\ms{RangeNode} or \ms{RangeLeaf}. This list is stored in a ``tree file", which
+can be written to and read by a \ms{Serializer} class. 
 
+% Talk about how serializer does not actually append nodes, but puts them on top
+% of a stack, then pops everything off of the stack in the dumps() method?
 During preprocessing, when building the tree from a set of datapoints,
-\texttt{Serializer} is initialized in write mode to build the tree file.
-\texttt{Serializer} in write mode exposes a \texttt{dumps(node)} method that
-takes in a node instance, serializes the node, and appends it to the tree file.
-This method also assigns the node a pointer into the tree file, which
-is the number of nodes appended previously to it. 
+\ms{Serializer} is initialized in write mode to build the tree file. In write
+mode, \ms{Serializer} exposes a \ms{dumps(node)} method that accepts a
+node instance, serializes the node, and adds it to the top of a ``node stack,''
+a temporary data structure which holds serialized nodes before the whole tree is
+written to disk. This method also assigns the node a pointer into the tree file,
+equal to the number of nodes which have already been serialized. As the size of
+the node stack is likely to exceed the total amount of memory available, the
+stack is stored on disk in a temporary file. 
 
-Once the tree is fully built, we call \texttt{Serializer.flush()}, which
-flushes the tree file to disk. From this point onwards, \texttt{Serializer} can
-be used to read the tree.
+Once every node has been serialized and placed on the stack, we call
+\ms{Serializer.flush()}. This method writes the serialized nodes to disk in the
+reverse order that they were created with \ms{dumps}, by continually popping
+elements off of the node stack and appending them to a tree file. Once tree
+serialization is complete, the temporary stack file can be deleted. From this
+point onwards, \ms{Serializer} is in read mode, and can only be used to read
+from the tree.
 
-In read mode, \texttt{Serializer.loads(pointer)} can be called to deserialize a
+In read mode, \ms{Serializer.loads(pointer)} can be called to deserialize a
 single node into a Python node instance, given its pointer into the tree file.
 So, to give a parent access to its child, we simply store the child's tree file
-pointer as an attribute of the parent. \texttt{loads} is implemented by seeking
+pointer as an attribute of the parent. \ms{loads} is implemented by seeking to
 the pointer in the tree file and reading out a single node's worth of bytes.
 
 % maybe some of this should go into Implementation details maybe something
 % about cPickle vs struct
-The seeking method varies by serializer. In Hodor, we test two main node
-serialization methods. The first is to use a delimiter, such as a newline
-character, between nodes. The second is to pack nodes into fixed-length
-strings, called ``blocks". 
+The seeking method varies by serializer. In HODOR, we test two main node
+serialization methods. The first is to use a delimiting character, such as
+newline, between nodes. The second is to pack nodes into fixed-length strings,
+called ``blocks". 
 
 \subsection{Tree serialization}
 
 Tree serialization is executed while preprocessing the datapoints into a tree,
 so that the order of nodes in the tree file is the same as the order in which
-Hodor preprocesses them. The tree is built recursively, from the bottom up.
-Hodor starts with a set of children. If these are leaves, then Hodor sorts them
-by the current dimension. Next, Hodor partitions the children into clusters of
-size $B$. For each of these clusters, Hodor creates a parent node and makes a
-recursive call to build the parent's linked tree in the next dimension, if
-there is one. If there is only one parent, then Hodor is done since the single
-parent is the root.  Otherwise, Hodor uses the parents as the set of children
-in the next recursive call. 
+HODOR preprocesses them. The tree is built recursively, from the bottom up.
+HODOR starts with a set of children. If these are leaves, then HODOR sorts them
+in the primary dimension of the current tree. If the full set of leaves is too
+large to fit in memory, the algorithm can use funnel sort to arrange them on
+disk. Next, HODOR partitions the children into clusters of at most $B$ items.
+For each of these clusters, HODOR creates a parent node and recurses to build
+the parent's linked tree in the next dimension, if any dimensions remain. If
+there is only one parent, then the parent is the root of the tree, and HODOR is
+done.  Otherwise, HODOR uses the parents as the set of children in the next
+recursive call. 
 
 % TODO: fix formatting
 \begin{figure}[p]
@@ -214,36 +225,41 @@ in the next recursive call.
 \end{figure}
 
 % move fig 1 here
-Hodor serializes the nodes in the same order that they are created. In the
+HODOR serializes the nodes in the same order that they are created. In the
 recursion for a set of children, all children are serialized first, followed by
-the linked subtree for each parent node, followed by the node itself. Each
-child is serialized before its parent, and each parent is serialized
-immediately after its linked subtree in the next dimension. This forms a series
-of levels [FIGURE 1]. For any dimension, each node falls in the same level as
-all of its siblings. The node's linked subtree in the next dimension also falls
-in this same level. All of the node's children and their linked subtrees fall
-in the level below, and the node's parent falls in the level above. 
+the linked subtree for each parent node, followed by the node itself. Each child
+is serialized before its parent, and each parent is serialized immediately after
+its linked subtree in the next dimension. This forms a series of levels [FIGURE
+1] for each tree. Consider a BORT, $t$, which is indexed in dimension $d$. Each
+node $n$ in $t$ falls in the same level as all of its siblings. The entirety of
+node's linked subtree, $t_n$, which will be in the next dimension ($d - 1$),
+also falls in this same level relative to $t$. All of $n$'s children and their
+linked subtrees fall in the level below, and $n$'s parent falls in the level
+above. 
 
-All leaves of the tree in the first dimension are in that tree's lowest level,
-and are therefore serialized first. The root of the same tree is in the tree's
-highest level, and is therefore serialized last. The leaves and root of each
-linked subtree follow the same pattern. 
+All the leaves of any tree are in the tree's lowest level, and are therefore
+serialized first. The root of the same tree is in the tree's highest level, and
+is therefore serialized last. The leaves and root of each linked subtree follow
+the same pattern. 
 
 % move fig 2 here
 Once we finish building the tree, we flush the nodes in the tree file to disk
-in reverse order of serialization. This way, each node will fall after all of
-its ancestors [FIGURE 2]. In the final disk layout, the root of the tree in the
-first dimension is the first node in the file, and the leaves of the same tree
-are the last in the file. This layout allows us to always read forward through
-the file as we traverse downwards from the root, as we do in a range query.
-Since each node falls immediately before its linked subtree in the next
-dimension, we also read forward through the file when traversing from one
+in reverse order of serialization, as described above. This way, each node will
+fall after all of its ancestors [FIGURE 2]. In the final disk layout, the root
+of the tree in the first dimension is the first node in the file, and the leaves
+of the same tree occur last in the file. This layout allows us to always read
+forward through the file as we traverse downwards from the root, as we do in a
+range query. Since each node falls immediately before its linked subtree in the
+next dimension, we also read forward through the file when traversing from one
 dimension to the next. All of the siblings in one level were originally
 serialized in order, so writing them to disk in reverse order means that within
 each level, the maximum-valued sibling now comes first and the minimum-valued
 now sibling comes last. 
 
 \section{Analysis}
+
+In this section, we analyze the running time of queries in HODOR with respect to
+disk reads.
 
 Our analysis assumes that HODOR is running on a machine with a high-capacity
 spinning disk for long-term storage, and a smaller main memory with fast 
@@ -338,7 +354,7 @@ make.
 
 \subsection{Node serialization}
 
-In Hodor, we test two methods of node serialization: one with varible-length 
+In HODOR, we test two methods of node serialization: one with varible-length 
 delimited strings, and one with fixed-length blocks. Both of these methods see a
 trade-off between convenience and efficiency. 
 
@@ -352,7 +368,7 @@ This may be mitigated by Python's line iterator or linecache features
 
 Loading nodes from fixed-length blocks yields a lower performance cost than
 from delimited strings. When nodes are stored as blocks, a node's exact byte
-position can be calculated from its file pointer, so Hodor can jump to nodes
+position can be calculated from its file pointer, so HODOR can jump to nodes
 directly. However, fixed-length blocks are less flexible in space usage than
 delimited strings. Each node in a range tree stores a constant number of
 values, such as min, max, and child pointers, and each leaf stores the values
