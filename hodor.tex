@@ -389,7 +389,7 @@ reads, but no extra back seeks.
 \subsection{Tree serialization}
 
 % analyze a range query in terms of back seeks
-
+% TODO: add note aobut how recursive algorithm means recursive layout
 The efficiency of tree serialization in terms of back seeks depends on the path
 taken by a range query. We want to order the node accesses during a range query
 so that we do as many consecutive forward seeks as possible, while minimizing
@@ -600,7 +600,38 @@ the modified algorithm as a whole, does not require any back seeks.
 % note about our model: we've dealt with things in terms of time and space
 % before, and we dealt with disk accesses in cache-obliviousness, but this is
 % cool ... and stuff
+    
+% not all reads are created equal
+We found in our results that not all data accesses are equal in performance.
+Back seeks, or seeks that require reading at a point earlier than the current
+file position, require significantly more time than forward seeks. Thus, when
+implementing on-disk data structures, it is critical to consider the number of
+back seeks required during each operation. 
 
+% it is possible to eliminate back seeks
+While back seeks in Hodor took a significantly longer time than forward seeks,
+we did find that it was possible to eliminate back seeks by adjusting the tree
+serialization order and the range query algorithm so that they could work in
+unison. With a naive recursive range query implementation, it is possible to
+achieve $O(\log_B^d n)$ many back seeks by using a similarly recursive disk
+layout. With the same disk layout, it is possible to achieve no back seeks at
+all by adjusting the range query implementation to better fit the levels
+structure in the disk layout. Therefore, our work in Hodor shows that for
+orthogonal range trees, it is possible to eliminate back seeks by adjusting the
+disk layout and the implementation of the range tree operations to account for
+each other. 
+
+% back seek model can be applied to other data structures for a large dataset 
+Orthogonal range-trees can in theory achieve significant speedup over a
+traditional database, making it desirable to implement them efficiently
+on-disk. Still, they are just one of many data structures that would be useful
+for representing a dataset too large for memory [Example?]. We believe that the
+back seek model used to analyze Hodor's performance is critical for analysis of
+other such on-disk data structure implementations. We showed in Hodor that
+while back seeks were costly in performance, they were also avoidable with an
+operation-aware serialization order and serialization-aware operations. Thus,
+we hope that the Hodor results may be used as a basis for optimizing future
+implementations of on-disk data structures. 
 
 
 \section{References}
