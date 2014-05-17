@@ -2,8 +2,11 @@
 
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
+\usepackage{parskip} % for spaces between paragraphs
+\usepackage[top=1.5in, bottom=1.5in, left=1.5in, right=1.5in]{geometry} % for custom margin sizes
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{algorithmicx}
 \usepackage[colorinlistoftodos]{todonotes}
 \usepackage{pslatex}
 \usepackage[margin=1in]{geometry}
@@ -50,20 +53,21 @@ Katie Siegel (ksiegel@mit.edu)\\[2ex]
 
 Many web applications today require data queries in two or more dimensions. For
 instance, a point of interest on a map has latitude and longitude coordinates,
-and may be indexed by other comparable values. These include start and end
-times for an event, price ranges for a business, or average user rating for a
-service. Databases typically support efficient range querying on one primary
-key at a time. Multi-dimensional range queries, however, are expensive and
-require several linear passes of the dataset in most implementations. On the
-other hand, orthogonal range trees with fractional cascading can improve range
-queries in $d$ dimensions to $O(\log^{d-1} n + k)$ time, where $k$ is the size
-of the result set [CITATION]. 
+and may also be indexed by time, popularity, or other comparable values. A 
+baseball player might be indexed by age, height, batting average, and salary;
+movies in a streaming service could be sorted by year, user rating, length, etc. 
+Databases typically support efficient range querying on one primary key at a
+time. Multi-dimensional range queries, however, are expensive and require
+several linear passes of the dataset in most implementations. 
 
-In-memory orthogonal range tree implementations have been able to achieve
-significant query time speedup [CITATION, Tim's paper]. These can be used to
-extend a database for smaller datasets. Most datasets, however, are too large
-to fit in memory, and therefore require an on-disk implementation. To this end,
-we present HODOR, an on-disk Python implementation of range-trees. 
+As we have seen in class, orthogonal range trees are capable of range queries in
+$d$ dimensions to $O(\log^{d-1} n + k)$ time, where $k$ is the size of the
+result set [CITATION].  In-memory orthogonal range tree implementations have
+been able to achieve significant query time speedup [CITATION, Tim's paper].
+These can be used to extend a database for smaller datasets. Most datasets,
+however, are too large to fit in memory, and therefore require an on-disk
+implementation. To this end, we present HODOR, an on-disk Python implementation
+of range-trees. 
 
 The main obstacle in an on-disk implementation of orthogonal range trees is the
 added overhead in disk access time. Therefore, in this paper, we explore
@@ -215,14 +219,15 @@ now sibling comes last.
 \section{Analysis}
 
 Our analysis assumes that HODOR is running on a machine with a high-capacity
-spinning disk for long-term storage, and a smaller main memory 
+spinning disk for long-term storage, and a smaller main memory with fast 
+reads and writes.
 
 In our analysis, we will focus on measuring disk reads in two categories.
 Assuming we are reading blocks from one continuous file on disk, \textit{forward
 seeks} are defined as reads from a location after the current file pointer, so
 that the pointer's value is increased. \textit{Back seeks} are reads from a
 location before the current pointer, so that the pointer's value must be
-increased. In our disk-memory model, forward seeks are, in general, much faster
+decreased. In our disk-memory model, forward seeks are, in general, much faster
 than back seeks. When accessing file blocks in sequential order, the blocks can
 be loaded into memory at speeds approaching the disk's maximum read speed, which
 is on the order of 100MB/s on modern hard drives. However, if a file block from
@@ -244,9 +249,8 @@ node is as follows, in pseudocode. Here, \ms{ranges} is a dictionary of the
 ranges to be sorted, indexed by the name of each range's dimension. The BORT has
 $n$ total elements, $d$ dimensions, and a branching factor of $B$.
 
-\begin{verbatim}
-\textsc{RangeQuery}(Ranges, Dimension): \\
-    start, end <- Ranges\[Dimension\] \\
+\textsc{RangeQuery}(ranges, dimension): \\
+    start, end $<-$ ranges[dimension] \\
     
     if IS\_LAST\_DIMENSION: \\
         return \textsc{GetRange}(start, end) \\
@@ -255,7 +259,6 @@ $n$ total elements, $d$ dimensions, and a branching factor of $B$.
 
     Recurse on child containing start \\
     Recurse on child containing end
-\end{verbatim}
 
 In the base case, the node is in the last dimension, and the function is reduced
 to a \ms{get\_range} call. \ms{get\_range} is a function which returns all
@@ -347,19 +350,25 @@ tree, the levels themselves are sorted in order from highest to lowest, so if
 an ancestor is accessed after the node itself, it will cost one back seek. 
 
 Because a node and all of its siblings lie in the same level, when the range
-query accesses the root's children, it does all of its work in the same level.
-Each level is sorted in reverse order in the disk layout, so if the range query
-accesses the children from right to left, then no back seeks are needed to load
-the root's children. Finally, because the range query always traverses
-downwards, we never return to the root's level once we access the children's
-level, so no back seeks are needed to jump between levels either.
+query accesses the root's children, it does all of its work in one level. Each
+level is sorted in reverse order in the file, so if the range query accesses the
+children from max to min (right to left), then no back seeks are needed to load
+the root's children. Finally, the algorithm recurses on several child nodes, for
+which all of the data is located later in the file. Because the range query
+always traverses downwards, we never return to the root's level once we access
+the children's level.
 
-Next we analyze the back seeks needed for a recursive call on a child. There
-are two possible types of recursive calls. Either we recurse on a child's
-linked subtree, or we recurse on the child itself. In the first case, since
-each child's linked subtree falls in the same level as the child and comes
-immediately after the child in the disk layout, the recursive call stays within
-the same level as the child. In the second case...
+Next we analyze the back seeks needed for a recursive call on a child node.
+There are two possible types of recursive calls: either we recurse on a node's
+linked subtree, or we recurse on the node itself. In the first case, note that
+the entirety of each node's linked subtree falls in the same level as the node
+and comes immediately after the in the disk layout. Therefore, the
+recursive call stays within the same level as the node, and the file pointer
+seeks forward. In the second case, each of the node's children is located in
+the next level of the file, so the file pointer jumps forward and recurses on
+each.
+
+%Say something about querying linked subtrees before children here
 
 \subsection{Results}
 
@@ -371,20 +380,20 @@ the same level as the child. In the second case...
 		xlabel=Data Size (Total Entries),ylabel=Number of Seeks]
 
 	\addplot[color=blue,mark=*] coordinates {
-		(1024,66681)
-		(4096,83658)
-		(16384,65676)
-		(65536,61205)
-		(262144,54509)
-        (1048576,X)
+		(1024,280524)
+		(4096,264056)
+		(16384,208401)
+		(65536,176031)
+		(262144,164698)
+        (1048576,156474)
 	};
 	\addplot[color=red,mark=*] coordinates {
-		(1024,6022)
-		(4096,1504)
-		(16384,918)
-		(65536,740)
-		(262144,664)
-        (1048576,X
+		(1024,16250)
+		(4096,4061)
+		(16384,1497)
+		(65536,1101)
+		(262144,1000)
+        (1048576,558)
 	};
 	\legend{$Forward\ seeks$,$Backward\ seeks$}
 	\end{loglogaxis}%
