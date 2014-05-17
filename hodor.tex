@@ -32,7 +32,7 @@
 \definecolor{mygreen}{rgb}{0,0.6,0}
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
-\newcommand{\ms}{\ms}
+\newcommand{\ms}{\textit}
 \newtheorem*{lemma}{Lemma}
 
 \lstset{ %
@@ -293,7 +293,7 @@ ranges to be sorted, indexed by the name of each range's dimension. The BORT has
 $n$ total elements, $d$ dimensions, and a branching factor of $B$.
 
 \begin{algorithm}
-    \caption{Finding all nodes in ranges in multiple dimensions}
+    \caption{Recursively find all elements in a multidimensional range}
     \begin{algorithmic}[1]
         \Require{\nod\textsc{Ranges} is a dictionary of (start, end) range
             tuples indexed by dimension, $n$ is a node, and $d$ is an integer
