@@ -81,12 +81,12 @@ these optimizations against a Python database [BUZHUG CITATION].
 
 The main goal of HODOR is to allow efficient range queries of very large
 datasets with an arbitrary number of dimensions. We designed the structure to
-perform on machines with a limited amount of memory, and a large amount of
-storage on a comparatively slow hard disk. As such, we wanted to minimize the
+perform on machines with a limited amount of memory and a large amount of
+storage on a relatively slow hard disk. As such, we wanted to minimize the
 time spent reading data from disk, but were generally unconcerned with
 in-memory comparison operations. We optimized for this in two ways: first, by
 minimizing total disk reads, and second, by chaining consecutive disk accesses
-so that they may be executed as efficiently as possible. 
+so that they can be executed as efficiently as possible. 
 
 HODOR requires a relatively long time to construct its tree and serialize it to
 disk, so the results presented in this paper are for queries on static trees
@@ -208,29 +208,31 @@ the file as we traverse downwards from the root, as we do in a range query.
 
 \section{Analysis}
 
+Our analysis assumes that HODOR is running on a machine with a high-capacity
+spinning disk for long-term storage, and a smaller main memory 
+
 In our analysis, we will focus on measuring disk reads in two categories.
 Assuming we are reading blocks from one continuous file on disk, \textit{forward
 seeks} are defined as reads from a location after the current file pointer, so
 that the pointer's value is increased. \textit{Back seeks} are reads from a
 location before the current pointer, so that the pointer's value must be
-increased. In our slow disk-fast memory model, forward seeks are, in general,
-much faster than back seeks. When accessing file blocks in sequential order, the
-blocks can be loaded into memory at speeds approaching the disk's maximum read
-speed, which is on the order of 100MB/s on modern hard drives. However, if a
-file block from position $i-1$ is accessed immediately after the file block at
-$i$, the disk must make most of complete revolution before the new block can be
-loaded. On a typical drive spinning at 7200 RPM, this revolution takes over 8
-milliseconds.
+increased. In our disk-memory model, forward seeks are, in general, much faster
+than back seeks. When accessing file blocks in sequential order, the blocks can
+be loaded into memory at speeds approaching the disk's maximum read speed, which
+is on the order of 100MB/s on modern hard drives. However, if a file block from
+position $i-1$ is accessed immediately after the file block at $i$, the disk
+must make most of complete revolution before the new block can be loaded. On a
+typical drive spinning at 7200 RPM, this revolution takes over 8 milliseconds.
 
 In addition to minimizing total disk reads, we tried to minimize back seeks
 wherever possible when designing HODOR. We will analyze our data structures in
-terms of both total reads and total back seeks in the sections following.
+terms of both total reads and total back seeks in the sections below.
 
 \subsection{BORTs}
 
 We will now examine the complexity of a search on a fully formed BORT, in terms
-of disk reads. The algorithm for performing a range query on a (non-leaf) node
-is as follows, in pseudocode. Here, \ms{ranges} is a dictionary of the
+of total disk reads. The algorithm for performing a range query on a (non-leaf)
+node is as follows, in pseudocode. Here, \ms{ranges} is a dictionary of the
 ranges to be sorted, indexed by the name of each range's dimension. The BORT has
 $n$ total elements, $d$ dimensions, and a branching factor of $B$.
 
@@ -275,40 +277,12 @@ of a BORT makes $O(\log_B^d n + k)$ reads from the disk. In the sections below,
 we will analyze how we can bound the \textit{types} of disk reads we have to
 make.
 
-\begin{figure}[b!]
-\centering
-\begin{tikzpicture}
-	\begin{semilogxaxis}[
-		xlabel=Data Size (\# of entries),ylabel=\# of Seeks]
-
-	\addplot[color=blue,mark=*] coordinates {
-		(1024,66681)
-		(4096,83658)
-		(16384,65676)
-		(65536,61205)
-		(262144,54509)
-	};
-	\addplot[color=red,mark=*] coordinates {
-		(1024,6022)
-		(4096,1504)
-		(16384,918)
-		(65536,740)
-		(262144,664)
-	};
-	\legend{$Forward\ seeks$,$Backward\ seeks$}
-	\end{semilogxaxis}%
-\end{tikzpicture}%
-\caption{
-    The number of forwards and backwards seeks involved with range queries varies with the size of the data stored in the orthogonal range tree. While backwards seeks are far more costly (10x) than forward seeks, they are far less in number, and decrease with larger data size.
-}
-\label{fig:figure2}
-\end{figure}
 
 \subsection{Node serialization}
 
-In Hodor, we test two methods of node serialization: delimited strings versus
-fixed-length blocks. Both of these methods see a trade-off between convenience
-and efficiency. 
+In Hodor, we test two methods of node serialization: one with varible-length 
+delimited strings, and one with fixed-length blocks. Both of these methods see a
+trade-off between convenience and efficiency. 
 
 Delimited strings are convenient because they support arbitrarily sized
 datapoint values. In addition, the delimited method may help to keep down the
@@ -318,16 +292,23 @@ be calculated without reading from the file and counting delimiter characters.
 This may be mitigated by Python's line iterator or linecache features
 [CITATION, f.lines() iterator, linecache]. 
 
-Loading nodes from fixed-length blocks should see a lower performance cost than
+Loading nodes from fixed-length blocks yields a lower performance cost than
 from delimited strings. When nodes are stored as blocks, a node's exact byte
-position can be calculated from its file pointer, so Hodor can seek to a node
+position can be calculated from its file pointer, so Hodor can jump to nodes
 directly. However, fixed-length blocks are less flexible in space usage than
 delimited strings. Each node in a range tree stores a constant number of
-values, such as min, max, and child pointers. If we bound the size for each
-value, we can serialize each node with efficient space usage. However, this
-would limit the type and size of data that can be queried upon. To support
-arbitrarily sized data, smaller blocks would have to be padded to the block
-size, using extra space. 
+values, such as min, max, and child pointers, and each leaf stores the values
+for $B$ data points. If we bound the size of each node and leaf, we can
+serialize each node with efficient space usage. However, this limits the type
+and size of data that can be stored. Data points with variable-length data types
+like strings
+
+To support arbitrarily sized data in constant sized blocks, we can store the
+data points themselves as delimited strings at the end of the database file, and
+store pointers to the data in the leaves. When a query is performed, the
+pointers can all be read into memory first, sorted, and used to access the
+actual data sequentially from the file. This method requires $k$ extra disk
+reads, but no extra back seeks.
 
 % stats on block serializer vs line serializer here?
 
@@ -338,6 +319,40 @@ size, using extra space.
 \subsection{Results}
 
 % stats
+\begin{figure}[b!]
+\centering
+\begin{tikzpicture}
+	\begin{loglogaxis}[
+		xlabel=Data Size (Total Entries),ylabel=Number of Seeks]
+
+	\addplot[color=blue,mark=*] coordinates {
+		(1024,66681)
+		(4096,83658)
+		(16384,65676)
+		(65536,61205)
+		(262144,54509)
+        (1048576,X)
+	};
+	\addplot[color=red,mark=*] coordinates {
+		(1024,6022)
+		(4096,1504)
+		(16384,918)
+		(65536,740)
+		(262144,664)
+        (1048576,X
+	};
+	\legend{$Forward\ seeks$,$Backward\ seeks$}
+	\end{loglogaxis}%
+\end{tikzpicture}%
+\caption{
+    The number of forwards and backwards seeks invoked by range queries varies
+    with the size of the data set in the orthogonal range tree. While
+    backwards seeks are far more costly than forward seeks, they are far
+    fewer in number, and the number of back seeks as a fraction of total seeks
+    decreases exponentially as the set of data points grows.
+}
+\label{fig:figure2}
+\end{figure}
 
 \section{Conclusion}
 
