@@ -229,13 +229,13 @@ HODOR serializes the nodes in the same order that they are created. In the
 recursion for a set of children, all children are serialized first, followed by
 the linked subtree for each parent node, followed by the node itself. Each child
 is serialized before its parent, and each parent is serialized immediately after
-its linked subtree in the next dimension. This forms a series of levels [FIGURE
-1] for each tree. Consider a BORT, $t$, which is indexed in dimension $d$. Each
-node $n$ in $t$ falls in the same level as all of its siblings. The entirety of
-node's linked subtree, $t_n$, which will be in the next dimension ($d - 1$),
-also falls in this same level relative to $t$. All of $n$'s children and their
-linked subtrees fall in the level below, and $n$'s parent falls in the level
-above. 
+its linked subtree in the next dimension. This forms a series of levels
+\cite{seinfeld} for each tree [FIGURE 1]. Consider a BORT, $t$, which is indexed
+in dimension $d$. Each node $n$ in $t$ falls in the same level as all of its
+siblings. The entirety of node's linked subtree, $t_n$, which will be in the
+next dimension ($d - 1$), also falls in this same level relative to $t$. All of
+$n$'s children and their linked subtrees fall in the level below, and $n$'s
+parent falls in the level above. 
 
 All the leaves of any tree are in the tree's lowest level, and are therefore
 serialized first. The root of the same tree is in the tree's highest level, and
@@ -638,14 +638,16 @@ implementations of on-disk data structures.
 
 \begin{thebibliography}{1}
     
-        \bibitem{lecture} Demaine, Erik. ``Lecture 3,'' February 23, 2012.
-        MIT: \\ http://courses.csail.mit.edu/6.851/spring14/scribe/lec3.pdf,
-        n.d. PDF.
+    \bibitem{lecture} Demaine, Erik. ``Lecture 3,'' February 23, 2012.  MIT: \\
+        http://courses.csail.mit.edu/6.851/spring14/scribe/lec3.pdf, n.d. PDF.
 
-        \bibitem{redis} Kaler, Tim, and Oscar Moll. ``Spatial Data Structures -
+    \bibitem{redis} Kaler, Tim, and Oscar Moll. ``Spatial Data Structures -
         Performance Comparision.'' N.p.: \\
         http://tfk.mit.edu/pdf/2drangesearch\_datastructures.pdf, 25 May 2012.
         PDF.
+
+    \bibitem{seinfeld} Cherones, Tom. ``The Pony Remark.'' \textit{Seinfeld.}
+        NBC. 30 January 1991. Television.
 
 \end{thebibliography}
 \end{document}
