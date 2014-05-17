@@ -124,7 +124,7 @@ class RangeNode(object):
         while si > 0 and self.children[si - 1][1] >= start:
             si -= 1
 
-        # ------------------------------------- \begin{JANK} -------------------------------------#
+        # ------------------------------------- \begin{JANK} ------------------------------------ #
         #'''
         recursed = False
         end_child = None
@@ -162,7 +162,6 @@ class RangeNode(object):
             # JANK ALERT
             if type(start_child) is RangeNode:
                 end_child.children = start_child.children + end_child.children
-                print 'Hodor'
             elif start_child is not None:
                 results.extend(start_child.range_query(ranges))
             results.extend(end_child.range_query(ranges))
