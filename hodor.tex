@@ -205,6 +205,12 @@ its ancestors [FIGURE 2]. In the final disk layout, the root of the tree in the
 first dimension is the first node in the file, and the leaves of the same tree
 are the last in the file. This layout allows us to always read forward through
 the file as we traverse downwards from the root, as we do in a range query.
+Since each node falls immediately before its linked subtree in the next
+dimension, we also read forward through the file when traversing from one
+dimension to the next. All of the siblings in one level were originally
+serialized in order, so writing them to disk in reverse order means that within
+each level, the maximum-valued sibling now comes first and the minimum-valued
+now sibling comes last. 
 
 \section{Analysis}
 
@@ -221,6 +227,8 @@ file block from position $i-1$ is accessed immediately after the file block at
 $i$, the disk must make most of complete revolution before the new block can be
 loaded. On a typical drive spinning at 7200 RPM, this revolution takes over 8
 milliseconds.
+
+% make a note of mixing front and back seeks --> more jumps
 
 In addition to minimizing total disk reads, we tried to minimize back seeks
 wherever possible when designing HODOR. We will analyze our data structures in
@@ -334,6 +342,43 @@ size, using extra space.
 \subsection{Tree serialization}
 
 % analyze a range query in terms of back seeks
+
+The efficiency of tree serialization in terms of back seeks depends on the path
+taken by a range query. We want to order the node accesses during a range query
+so that we do as many consecutive forward seeks as possible, while minimizing
+back seeks. Here we review the typical range query implementation and analyze
+its worst-case back seek count. 
+
+A range query algorithm works recursively as it traverses down a tree in some
+dimension, treating each node as the root of its subtree. For each of the
+root's children, the range query determines if the child's range lies
+completely within the desired range. If it does, then the algorithm recurses on
+the child's linked node in the next dimension. Otherwise, the algorithm
+recurses on the child itself. 
+
+Recall that the nodes are structured into recursive levels on disk, where each
+level contains a node, all of its siblings, and its linked subtree in the next
+dimension. The number of back seeks we do during each recursion depends on the
+order in which nodes of the same level are accessed and the order in which the
+levels themselves are accessed. Each level is sorted in reverse order, so if a
+node is accessed after a left sibling, it will cost one back seek. For each
+tree, the levels themselves are sorted in order from highest to lowest, so if
+an ancestor is accessed after the node itself, it will cost one back seek. 
+
+Because a node and all of its siblings lie in the same level, when the range
+query accesses the root's children, it does all of its work in the same level.
+Each level is sorted in reverse order in the disk layout, so if the range query
+accesses the children from right to left, then no back seeks are needed to load
+the root's children. Finally, because the range query always traverses
+downwards, we never return to the root's level once we access the children's
+level, so no back seeks are needed to jump between levels either.
+
+Next we analyze the back seeks needed for a recursive call on a child. There
+are two possible types of recursive calls. Either we recurse on a child's
+linked subtree, or we recurse on the child itself. In the first case, since
+each child's linked subtree falls in the same level as the child and comes
+immediately after the child in the disk layout, the recursive call stays within
+the same level as the child. In the second case...
 
 \subsection{Results}
 
