@@ -138,6 +138,7 @@ class RangeNode(object):
                     link_results.extend(c.link().range_query(nranges))
             return link_results
         
+        # helper to load start if we need to recurse on it
         def load_start():
             if si > 0 and si - 1 != ei + 1:
                 c = self.children[si - 1]
