@@ -388,10 +388,10 @@ elements.
 The algorithm makes two different types of recursive calls. First, the
 $O(B)$ nodes which are fully contained in the range (start, end) are loaded into
 memory, and the algorithm recurses on the linked tree of each one. These
-linked-tree recursions can happen at most $d$ times in any query before the
+\textit{linked-tree recursions} can happen at most $d$ times in any query before the
 tree bottoms out. Second, the algorithm recurses on a constant number of its
 children (at most two) which contain the start and end values of the range.
-Each of these child node recursions operates on $O(\frac{m}{B})$ elements.
+Each of these \textit{child node recursions} operates on $O(\frac{m}{B})$ elements.
 
 \begin{algorithm}[H]
     \caption{Find all elements in a multidimensional range from a tree leaf.}
@@ -433,12 +433,11 @@ to make.
 
 \subsection{Back seek analysis}
 
-The efficiency of tree serialization in terms of back seeks depends on the path
-taken by a range query. We want to order the node accesses during a range query
-so that we do as many consecutive forward seeks as possible, while minimizing
-back seeks. Here we analyze the worst-case back seek count for the given range
-query algorithm by counting the number of back seeks needed for each recursion,
-using figure 1 as a reference for the order that we access nodes. 
+We want to order the node accesses during a range query so that we do as many
+consecutive forward seeks as possible, while eliminating back seeks. Here we
+analyze the worst-case back seek count for the given range query algorithm by
+counting the number of back seeks needed for each recursion, using figure 1 as a
+reference for the order that we access nodes. 
 
 As discussed above, the nodes are structured into recursive levels on disk,
 where each level contains a node, all of its siblings, and its linked subtree
@@ -447,8 +446,8 @@ depends on the order in which nodes of the same level are accessed and the
 order in which the levels themselves are accessed. Each level is sorted in
 reverse order, so if a node is accessed after its left sibling, it will cost
 one back seek. For each tree, the levels themselves are sorted in order from
-highest to lowest, so if an ancestor is accessed after the node itself, it will
-also cost one back seek. 
+``highest'' (root) to ``lowest'' (leaves), so if a node's ancestor is accessed
+after the node itself, it will also cost one back seek. 
 
 The range query recursion starts at the root of a subtree, illustrated by node
 0 in figure 1. Because a node and all of its siblings lie in the same level,
@@ -658,15 +657,15 @@ each other.
 
 % back seek model can be applied to other data structures for a large dataset 
 Orthogonal range-trees can in theory achieve significant speedup over a
-traditional database, making it desirable to implement them efficiently
-on-disk. Still, they are just one of many data structures that would be useful
-for representing a dataset too large for memory [Example?]. We believe that the
-back seek model used to analyze HODOR's performance would be effective for
-analysis of other such on-disk data structure implementations. We showed in
-HODOR that while back seeks are costly in performance, they are also avoidable
-with an operation-aware serialization order and serialization-aware operations.
-Thus, we hope that the HODOR results may be used as a basis for optimizing
-future implementations of on-disk data structures. 
+traditional database, making it desirable to implement them efficiently on-disk.
+Still, they are just one of many data structures that are useful for storing
+datasets too large for memory. We believe that the back seek model used to
+analyze HODOR's performance would be effective for analysis of other such
+on-disk data structure implementations. We showed in HODOR that while back seeks
+are costly in performance, they are also avoidable with an operation-aware
+serialization procedure and serialization-aware operations. Thus, we are hopeful
+that the results from HODOR can be used as a basis for optimizing future
+implementations of on-disk data structures. 
 
 \begin{figure}[b]
     GitHub: https://github.com/kathrynsiegel/buzhug-ort
