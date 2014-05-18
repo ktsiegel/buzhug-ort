@@ -138,15 +138,16 @@ the fastest structure possible.
 \subsection{Range B-Trees}
 
 The standard data structures used for implementing many table-style databases
-are the B Tree, and the modified version, the B+ Tree. As a quick overview, a B Tree is a
-search tree with a branching factor of $B$, i.e., each node points to at most
-$B$ children. A B+ Tree is an extension of the B Tree in which all data is stored at the
-leaves of the tree, and each leaf has a pointer to its immediate predecessor
-leaf, \ms{prev}. The logic behind the B Tree's design is that, since the act of
+are the B Tree, and the modified version, the B+ Tree. As a quick overview, a B
+Tree is a search tree with a branching factor of $B$, i.e., each node points to
+at most $B$ children. A B+ Tree is an extension of the B Tree in which all data
+is stored at the leaves of the tree, and each leaf has a pointer to its
+immediate predecessor leaf, \ms{prev}. Each leaf stores $B$ data points instead
+of node pointers. The logic behind the B Tree's design is that, since the act of
 loading children from disk into memory is often the bottleneck on database
 search performance, each node should load as many children as it can into memory
-at once. $B$ can then be tweaked to optimize for cache sizes on different machines.
-The predecessor pointers in a B+ tree allow easy range queries in one
+at once. $B$ can then be tweaked to optimize for cache sizes on different
+machines.  The predecessor pointers in a B+ tree allow easy range queries in one
 dimension: once we find the leaf with the maximum value in the range, we can
 walk backward along the predecessor leaves until we reach the one containing the
 minimum value, and return all leaves touched on the walk.
@@ -164,7 +165,7 @@ accesses.  However, as we will describe below, not all disk accesses are equal,
 and we can achieve better in-practice running times by laying out serialized
 nodes intelligently on disk.
 
-\subsection{Node serialization}
+\subsection{Node Serialization}
 
 In order to store range trees on disk, we require an efficient method to
 serialize and deserialize the data structure. In HODOR, we represent a Python
@@ -221,7 +222,7 @@ result set, but no extra back seeks.
 
 % stats on block serializer vs line serializer here?
 
-\subsection{Tree serialization}
+\subsection{Tree Serialization}
 
 Tree serialization is executed while preprocessing the datapoints into a tree,
 so that the order of nodes in the tree file is the same as the order in which
@@ -304,9 +305,9 @@ now comes first and the minimum-valued sibling now comes last.
 \section{Analysis}
 
 In this section, we analyze the performance of queries in HODOR with respect to
-disk reads. A disk read is needed to load any object not yet in memory.
-Therefore, any time an algorithm accesses a node not previously seen, the
-algorithm must do one disk read.
+disk reads. A disk read is needed to load any serialized node into memory.
+Therefore, the algorithm requires one disk read to access any node it has not
+previously seen.
 
 In our analysis, we will focus on measuring disk reads in two categories.
 Assuming we are reading blocks from one continuous file on disk,
@@ -320,15 +321,15 @@ file block at $i$, the disk must make a complete revolution before block $i-1$
 can be loaded. On a typical drive spinning at 7200 RPM, this revolution takes
 over 8 milliseconds.
 
-In addition to minimizing total disk reads, we tried to minimize back seeks
+In addition to minimizing total disk reads, we tried to eliminate back seeks
 wherever possible when designing HODOR. We will analyze our data structures in
 terms of both total reads and total back seeks in the sections below.
 
-\subsection{Disk read analysis}
+\subsection{Disk Read Analysis}
 
 We will now examine the complexity of a search on a fully formed BORT, in terms
 of total disk reads. The logic for performing a range query on a (non-leaf) node
-is shown in Algorithm 1, in pseudocode.
+is shown in Algorithm 1.
 
 \begin{algorithm}[H]
     \caption{Recursively find all elements in a multidimensional range from a
@@ -343,8 +344,9 @@ is shown in Algorithm 1, in pseudocode.
         \Function{RangeQuery}{Ranges, $n$, $d$}
             \Let{$start, end$}{Ranges[$d$]}
             \If{$d = 0$}
-                \Let{$pred$}{\Call{$n$.Predecessor}{$end$}}
-                \State \Return\Call{GetRange}{$pred$, $start$}\Comment{Get all
+                \Let{$leaf_{end}$}{\Call{GetLeafContaining}{$end$}}\Comment{Search
+                    for the leaf containing $end$}
+                \State \Return\Call{GetRange}{$leaf_{end}$, $start$}\Comment{Get all
                     leaves in this dimension's range}
             \EndIf
             
@@ -374,23 +376,23 @@ is shown in Algorithm 1, in pseudocode.
         \end{algorithmic}
 \end{algorithm}
 
-Let $m$ be the total of elements in the subtree of node $n$. In the base case,
-the node is in the last dimension, and the function is reduced to a
-\textsc{GetRange} call. \textsc{GetRange} is a function which returns all leaves
-in a range from this node's subtree. It is accomplished by searching for the leaf
-containing \ms{end}, and walking backwards along the link's \ms{prev} pointers
-until the leaf containing the minimum value is found. This operation takes
-$O(\log_B m + \frac{k}{B})$ reads: the search down the tree touches $\log_B m$
-nodes, and the walk touches $\frac{k}{B}$ leaves since each one holds $B$
-elements.
+Let $m$ be the total number of elements in the subtree of node $n$. In the base
+case, the node is in the last dimension, and the function is reduced to a search
+and a \textsc{GetRange} call. \textsc{GetRange} is a function which returns all
+leaves in a range from this node's subtree. It is accomplished by starting from
+the leaf containing the maximum value and walking backwards along the leaf's
+\ms{prev} pointers until the leaf containing the minimum value is found. This
+entire operation takes $O(\log_B m + k)$ reads: the search down the tree
+touches $\log_B m$ nodes, and the walk touches $k$ leaves.
 
-The algorithm makes two different types of recursive calls. First, the
-$O(B)$ nodes which are fully contained in the range (start, end) are loaded into
+The algorithm makes two different types of recursive calls. First, the $O(B)$
+nodes which are fully contained in the range (start, end) are loaded into
 memory, and the algorithm recurses on the linked tree of each one. These
-\textit{linked-tree recursions} can happen at most $d$ times in any query before the
-tree bottoms out. Second, the algorithm recurses on a constant number of its
-children (at most two) which contain the start and end values of the range.
-Each of these \textit{child node recursions} operates on $O(\frac{m}{B})$ elements.
+\textit{linked-tree recursions} can happen at most $d$ times in any query before
+the last dimension is reached. Second, the algorithm recurses on a constant
+number of its children (at most two) which contain the start and end values of
+the range. Each of these \textit{child node recursions} operates on
+$O(\frac{m}{B})$ elements.
 
 \begin{algorithm}[H]
     \caption{Find all elements in a multidimensional range from a tree leaf.}
@@ -410,17 +412,17 @@ Each of these \textit{child node recursions} operates on $O(\frac{m}{B})$ elemen
     \end{algorithmic}
 \end{algorithm}
 
-The logic at the leaf level is shown in Algorithm 2. Once \ms{range\_query} is
+The logic at the leaf level is shown in Algorithm 2. Once \textsc{RangeQuery} is
 called on a leaf, the leaf will either return some subset of its data, which is
 already loaded, or recurse on a linked leaf in the next dimension. This requires
 one disk read per dimension, for $O(d)$ in total. 
 
 Let the disk-read complexity of the algorithm with $m$ nodes and $d$ dimensions
-equal $T(m, d)$. Each of the constant number of child node recursions takes
-$T(\frac{m}{B}, d)$ reads. Using analysis similar to that in Lecture 3, this
+equal T($m, d$). Each of the constant number of child node recursions takes
+T($\frac{m}{B}, d$) reads. Using analysis similar to that in Lecture 3, this
 evaluates to $O(\log_B m)$ reads total for any tree \cite{lecture}. In the last
 dimension, there is also the possibility of a leaf-to-leaf walk, so the
-complexity jumps to $O(\log_B m + \frac{k}{B})$ reads. 
+complexity jumps to $O(\log_B m + k)$ reads. 
 
 Each one of the linked-tree node recursions operates on $(O(\frac{m}{B})$
 elements, on $d-1$ dimensions, so the total reads from all $O(B)$ of these
@@ -430,7 +432,7 @@ node of a BORT makes $O(\log_B^d m + k)$ reads from the disk. In the sections
 below, we will analyze how we can bound the \textit{types} of disk reads we have
 to make.
 
-\subsection{Back seek analysis}
+\subsection{Back Seek Analysis}
 
 We want to order the node accesses during a range query so that we do as many
 consecutive forward seeks as possible, while eliminating back seeks. Here we
@@ -438,7 +440,7 @@ analyze the worst-case back seek count for the given range query algorithm by
 counting the number of back seeks needed for each recursion, using figure 1 as a
 reference for the order that we access nodes. 
 
-As discussed above, the nodes are structured into recursive levels on disk,
+As discussed in section 2.4, the nodes are structured into recursive levels on disk,
 where each level contains a node, all of its siblings, and its linked subtree
 in the next dimension. The number of back seeks we do during each recursion
 depends on the order in which nodes of the same level are accessed and the
@@ -458,51 +460,43 @@ the root's children. Because the range query always traverses downwards, we
 never return to the root's level (level 2) once we access the children's level
 (level 1). 
 
-We analyze the back seeks needed for a recursive call on a child by examining
-the node and level access order. There are two possible types of recursive
-calls: either we recurse on the child's linked node when the child is
-completely contained in the queried interval, or we recurse on the child itself
-when the child contains either \ms{start} or \ms{end}.
+We analyze the back seeks needed for the two types of recursive calls on a child
+by examining the node and level access order. The linked-tree recursion case is
+illustrated by node 2. Suppose node 2's entire range is contained in the queried
+interval, so we recurse on its linked node, node 5. Note that the linked
+subtree at node 5 falls in the same level as node 2, so the recursive call on
+node 5 stays within level 1. Also, since a node occurs immediately before its
+linked subtree in the disk layout, we can make the recursive call to node 5
+directly after loading node 2 in order to avoid back seeks within the same
+level. Thus, a recursive call of the first case costs nothing in back seeks.
 
-The first case can be illustrated by node 2. Suppose node 2's entire range is
-contained in the queried interval, so we recurse on its linked node, node 5.
-Note that the linked subtree at node 5 falls in the same level, level 1, as
-node 2.  Therefore, the recursive call on node 5 stays within level 1. Also,
-since a node occurs immediately before its linked subtree in the disk layout,
-we can make the recursive call to node 5 directly after loading node 2 in order
-to avoid back seeks within the same level. Thus, a recursive call of the first
-case costs nothing in back seeks.
-
-The second case can be illustrated by node 1, in level 1. Suppose that node 1
-contains \ms{start}, so we recurse on node 1 and load its children in 0.
-According to the level structure of the disk layout, level 1 comes before level
-0, so we can load node 1's children by seeking forward from level 1 to level 0.
-However, if the range query ever has to access level 1 again, a back seek will
-be needed to return from level 0 or a level even further down the tree. This
-happens when the recursive call on a node is followed by a recursive call on
-one of that node's siblings, which lie in the same level. For example, the
-recursive call on node 1 will traverse down the tree, ending at some level past
-level 1 in the tree file. If we then do a recursive call on one of the nodes
-2-4, it will cost one back seek to return back to level 1. In other words,
+The child node recursion case can be illustrated by node 1, in level 1. Suppose
+that node 1 contains \ms{start}, so we recurse on node 1 and load its children
+in 0. Level 1 comes before level 0 on disk, so we can load node 1's children by
+seeking forward. However, if the range query ever has to access level 1 again, a
+back seek will be needed to return from level 0. This happens whenever the
+recursive call on a node is followed by a recursive call on one of that node's
+siblings. For example, the recursive call on node 1 will traverse down the tree,
+ending at some level below 1 in the tree file. If we next recurse on one of the
+nodes 2-4, it will cost one back seek to return back to level 1. In other words,
 during the recursion on node 0, if more than one recursive call of the second
-case is made, then every call except the last will contribute one back seek. \\
-
+case is made, then every call but the last will contribute one back seek. \\
 
 \begin{lemma}
     According to the given algorithm, there will be at most $O(\log_B^{d-1}n)$
-    many back seeks, where $d$ is the number of dimensions and $B$ is the
+    back seeks, where $d$ is the number of dimensions and $B$ is the
     branching factor. 
 \end{lemma}
 \begin{proof}
     As we noted above, during each recursion step, any recursive call of the
-    second case that is followed by another recursive call in the same step
-    contributes one back seek. A recursive call of the second case can only be
-    called on a child whose range is not completely contained within the
-    queried interval, and whose range contains the \ms{start} or \ms{end}
-    point. So, for each recursive step, there will be at most two recursive
-    calls of the second case. If there is zero or one, then the recursive step
-    does not contribute any back seeks. If there are two, the recursive step
-    contributes exactly one back seek.
+    second case (child node recursion) that is followed by another recursive
+    call in the same step contributes one back seek. A recursive call of the
+    second case can only be called on a child whose range is not completely
+    contained within the queried interval, and whose range contains the
+    \ms{start} or \ms{end} point. So, for each recursive step, there will be at
+    most two recursive calls of the second case. If there is zero or one, then
+    the recursive step does not contribute any back seeks. If there are two, the
+    recursive step contributes exactly one back seek.
 
     \begin{figure}[h!]
         \centering
@@ -512,29 +506,28 @@ case is made, then every call except the last will contribute one back seek. \\
             A range query on one tree layer of the entire ORT can be modeled as
             a search for the predecessor of $start$, leaf 5, and the successor
             of $end$, leaf 6 \cite{lecture}. The unlabeled nodes are those
-            whose linked subtrees must be queried. Leaves 5 and 6 share a least
-            common ancestor, node 2. During the \textsc{RangeQuery} recursion
+            whose linked subtrees must be queried. The least common ancestor of
+            leaves 5 and 6 is node 2. During the \textsc{RangeQuery} recursion
             on node 2, the algorithm makes recursive calls on two of node 2's
             children, one on node 3 and the other on node 4. The
             \textsc{RangeQuery} recursions on all other nodes in this layer,
-            including those on nodes 0, 1, 3 and 4, require only one recursive
-            call on the node's child. For example, the recursion on node 1
-            requires only one recursive call to node 2. 
+            including 0, 1, 3 and 4, require only one recursive call on each
+            node's child.
         }
         \vspace{0.5in}
     \end{figure}
 
     For a range query on a tree, there is at most one recursive step that
-    requires making two such recursive calls. This happens when the root node
-    of the recursion is the least common ancestor (\ms{lca}) of the predecessor
-    of \ms{start} and the successor of \ms{end} \cite{lecture}. This is
-    illustrated by node 2, the \ms{lca} of nodes 5 and 6, in figure 3. By
-    definition, \ms{lca} has one child (node 3) containing \ms{start} and a
-    different child (node 4) containing \ms{end}, each requiring one recursive
-    call. Each node that is an ancestor of \ms{lca} (nodes 0 and 1) covers the range
-    of \ms{lca}'s range, so it has a child that contains both \ms{start} and
-    \ms{end}. Only one recursive call on this child is needed. Each node that
-    is a descendant of \ms{lca} (nodes 3 and 4) can have at most one child that
+    requires making two such recursive calls. This happens when the root node of
+    the recursion is the least common ancestor (\ms{lca}) of the predecessor of
+    \ms{start} and the successor of \ms{end} \cite{lecture}. This is illustrated
+    by node 2, the \ms{lca} of nodes 5 and 6, in figure 3. By definition,
+    \ms{lca} has one child (node 3) containing \ms{start} and a different child
+    (node 4) containing \ms{end}, each requiring one recursive call. Each node
+    that is an ancestor of \ms{lca} (nodes 0 and 1) covers the range of
+    \ms{lca}'s range, so it has a child that contains both \ms{start} and
+    \ms{end}. Only one recursive call on this child is needed. Each node that is
+    a descendant of \ms{lca} (nodes 3 and 4) can have at most one child that
     contains either \ms{start} or \ms{end}, not both, since \ms{start} and
     \ms{end} were contained in different children of \ms{lca}. 
 
@@ -544,20 +537,20 @@ case is made, then every call except the last will contribute one back seek. \\
     queried. Using a similar analysis to the one given in lecture 3, this is
     $O(1)$ for 1 dimension, since there is only one tree. It is $O(\log_B n)$
     for 2 dimensions, since we recurse on at most $O(\log_B n)$ linked subtrees
-    in the second dimension. Recursing on $d$, we get $O(\log_B^{d-1}n)$ for
-    $d$ dimensions.
+    in the second dimension. Recursing on $d$, we get $O(\log_B^{d-1}n)$ for $d$
+    dimensions.
 
 \end{proof}
 
-\subsection{Minimizing back seeks}
+\subsection{Eliminating Back Seeks}
 
 The given range query algorithm requires back seeks because of accesses to a
-level that we have already previously traversed past. We can eliminate these
-accesses by ensuring that by the time we traverse downward from some node, all
-work that will ever be done in that node's level has already finished. The work
-done on that node's level is the work involving that node, its children, and
-its linked subtree in the next dimension. Here, we propose a modified algorithm
-that accomplishes this and analyze its complexity in back seeks.
+level that we have already traversed past. We can eliminate these accesses by
+ensuring that by the time we traverse downward from some node, all work that
+will ever be done in that node's level has already finished. The work done on
+that node's level is the work involving that node, its children, and its linked
+subtree in the next dimension. Here, we propose a modified algorithm that
+accomplishes this and analyze its complexity in back seeks.
 
 Like the naive algorithm, the modified algorithm starts at the root of the tree
 in the first dimension. However, rather than recursing on one node at a time,
@@ -651,7 +644,7 @@ of back seeks required during on-disk data structure operations.
 
 With a naive recursive range
 query implementation, it is possible to
-achieve $O(\log_B^d n)$ many back seeks by using a similarly recursive disk
+achieve $O(\log_B^d n)$ back seeks by using a similarly recursive disk
 layout. With the same disk layout, it is possible to achieve no back seeks at
 all by adjusting the range query implementation to better fit the levels
 structure in the disk layout. Therefore, our work in HODOR shows that for
