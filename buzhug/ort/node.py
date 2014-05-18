@@ -1,6 +1,3 @@
-jank_count = 0
-JANK = True
-
 class RangeNode(object):
 
     # children is a sorted list of the node's children in the tree - each
@@ -127,96 +124,54 @@ class RangeNode(object):
         while si > 0 and self.children[si - 1][1] >= start:
             si -= 1
 
-        # ------------------------------------- \begin{JANK} ------------------------------------ #
-        if JANK:
-            loaded_end_child = False
-            end_child = None
-            start_child = None
+        end_child = None
+        start_child = None
 
-            # 1: Load child containing end of range.
-            if ei + 1 < len(self.children):
-                c = self.children[ei + 1]
-                if end >= c[1]:
-                    end_child = self.load_child(c)
-                    loaded_end_child = True
-
+        # helper to recurse on all children that are contained within range
+        def recurse_on_links():
             # 2: do all of the fully-contained children
-            if ei >= si and (type(end_child) == RangeNode or end_child is None):
+            link_results = []
+            if ei >= si:
                 for i in reversed(xrange(si, ei + 1)):
                     c = self.load_child(self.children[i])
                     # We know the child has a link because it's the same dimension
-                    results.extend(c.link().range_query(nranges))
-
-            should_load_start = False
-            # 3: Load and recurse on child containing start of range
-            if si > 0 and ((si - 1 == ei + 1 and not loaded_end_child)
-                    or (si - 1 != ei + 1)):
+                    link_results.extend(c.link().range_query(nranges))
+            return link_results
+        
+        def load_start():
+            if si > 0 and si - 1 != ei + 1:
                 c = self.children[si - 1]
                 if start <= c[2]:
-                    if not loaded_end_child:
-                        start_child = self.load_child(c)
-                        results.extend(start_child.range_query(ranges))
-                        return results
-                    should_load_start = True
-
-
-            global jank_count
-            bs = self.serializer.back_seeks
-            # 4. Trying something janky: If there are two distinct children to
-            # recurse down, join the left child's children onto the right child's
-            # children list, and recurse on only the right child.
-            if type(end_child) is RangeNode:
-                # JANK ALERT
-                if should_load_start:
-                    jank_count += 1
-                    start_child = self.load_child(self.children[si-1])
-                    end_child.children = start_child.children + end_child.children
-                results.extend(end_child.range_query(ranges))
-                if bs != self.serializer.back_seeks:
-                    print 'HodorHodor'
-            elif end_child is not None:
-                results.extend(end_child.range_query(ranges))
-                if ei >= si:
-                    for i in reversed(xrange(si, ei + 1)):
-                        c = self.load_child(self.children[i])
-                        # We know the child has a link because it's the same dimension
-                        results.extend(c.link().range_query(nranges))
-                if should_load_start:
-                    start_child = self.load_child(self.children[si-1])
-                    if bs != self.serializer.back_seeks:
-                        print 'Hodor'
-                    results.extend(start_child.range_query(ranges))
-
-            return results
-
-        # ------------------------------------- \end{JANK} -------------------------------------- #
-
-        # Old, safe code.
-        # 1: do all of the fully-contained children
-        if ei >= si:
-            for i in reversed(xrange(si, ei + 1)):
-                c = self.load_child(self.children[i])
-                # We know the child has a link because it's the same dimension
-                results.extend(c.link().range_query(nranges))
-
-        loaded_end_child = False
-
-        # 2: recurse on child containing end of range.
+                    start_child = self.load_child(c)
+                    return start_child
+                
+        # Always attempt to load the child containing the end of the range
+        # first 
         if ei + 1 < len(self.children):
             c = self.children[ei + 1]
             if end >= c[1]:
-                child = self.load_child(c)
-                loaded_end_child = True
-                results.extend(child.range_query(ranges))
+                end_child = self.load_child(c)
 
-        if si <= 0:
+        # Either there is no end child, or end child is a leaf. Then order is:
+        # - if the end child is a leaf, recurse on end child
+        # - always recurse on children between start and end 
+        # - recurse on the start child
+        if type(end_child) != RangeNode or end_child is None:
+            if end_child is not None:
+                results.extend(end_child.range_query(ranges))
+            results.extend(recurse_on_links())
+            start_child = load_start()
+            if start_child is not None:
+                results.extend(start_child.range_query(ranges))
             return results
-
-        # 3: recurse on child containing start of range
-        if (si - 1 == ei + 1 and not loaded_end_child) or (si - 1 != ei + 1):
-            c = self.children[si - 1]
-            if start <= c[2]:
-                child = self.load_child(c)
-                results.extend(child.range_query(ranges))
-
+        
+        # Otherwise, there is an end child and it's not a leaf. Then order is:
+        # - recurse on children between start and end
+        # - combine start and end children, and recurse on the end child
+        results.extend(recurse_on_links())
+        # combine with start child
+        start_child = load_start()
+        if start_child is not None:
+            end_child.children = start_child.children + end_child.children
+        results.extend(end_child.range_query(ranges))
         return results
