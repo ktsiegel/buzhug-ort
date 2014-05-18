@@ -33,7 +33,7 @@
 \definecolor{mygreen}{rgb}{0,0.6,0}
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
-\newcommand{\ms}{\textit}
+\newcommand{\ms}{\texttt}
 \newtheorem*{lemma}{Lemma}
 
 \lstset{ %
@@ -88,27 +88,26 @@ more dimensions. Databases typically support efficient range querying on one
 primary key at a time. Multi-dimensional range queries, however, are expensive,
 and common implementations require $O(n)$ time. 
 
-As we saw in class, orthogonal range trees (ORTs) can achieve range queries on $d$
-dimensions in $O(\log^{d} n + k)$ time, where $k$ is the size of the result set
-\cite{lecture}. These trees have been implemented in memory with success,
+As we saw in class, orthogonal range trees (ORTs) can achieve range queries on
+$d$ dimensions in $O(\log^{d} n + k)$ time, where $k$ is the size of the result
+set \cite{lecture}. These trees have been implemented in memory with success,
 including as an extension to the popular database Redis \cite{redis}. In-memory
 databases are useful for smaller datasets, or for companies with enough
-resources to operate expansive data centers. However, for data sets
-which are too large to fit in main memory, magnetic hard disks remain the most
-economical long-term storage option. On-disk data structures present a unique
-set of challenges requiring a unique solution. To this end, we designed HODOR,
-an on-disk Python implementation of orthogonal range-trees. 
+resources to operate expansive data centers. However, for data sets which are
+too large to fit in main memory, magnetic hard disks remain the most economical
+long-term storage option. On-disk data structures present a unique set of
+challenges requiring a unique solution. To this end, we designed HODOR, an
+on-disk implementation of ORTs. 
 
-The main obstacle to an on-disk implementation of orthogonal range trees is the
-added overhead in disk access time. Therefore, in this paper, we explore
-different methods of optimizing disk I/O accesses, in terms of disk read
-frequency and overall query time. First, we present our overall design, and
-specific modifications we made to the standard ORT structure. Second, we
-describe our serialization protocols for the data structure. Third, we analyze
-each query in terms of both total disk accesses and a new metric,
-\textit{back seeks}, which we introduce here. We describe how to achieve more
-efficient runtime by eliminating back seeks from our data structure's
-query function. Finally, we present experimental test data, and discuss how our
+The main obstacle to an on-disk implementation of ORTs is the added overhead in
+disk access time. Therefore, in this paper, we explore different methods of
+optimizing disk I/O accesses, in terms of disk read frequency and overall read
+time. First, we present our overall design, and specific modifications we made
+to the standard ORT structure. Second, we describe our serialization protocols
+for the data structure. Third, we analyze each query in terms of both total disk
+accesses and a new metric, \textit{back seeks}, which we introduce here. We
+describe how to achieve faster runtime by eliminating back seeks from range
+queries. Finally, we discuss a Python implentation of HODOR, and discuss how our
 findings from this project may contribute to future work.
 
 \section{Design}
@@ -125,20 +124,20 @@ storage on a relatively slow hard disk. As such, we wanted to minimize the
 time spent reading data from disk, but were generally unconcerned with
 in-memory comparison operations. We optimized for this in two ways: first, by
 minimizing total disk reads, and second, by chaining consecutive disk accesses
-so that they can be executed as efficiently as possible. 
+so that they may be executed as efficiently as possible. 
 
 HODOR requires a relatively long time to construct its tree and serialize it to
 disk, so the results presented in this paper are for queries on static trees
-only. In addition, there are well-documented techniques for augmenting range
-trees, such as fractional cascading, which can speed up queries by a logarithmic
+only. In addition, there are well-documented techniques, such as fractional
+cascading, which can augment range trees to speed up queries by a logarithmic
 factor. However, the goal of this project was more to determine whether we could
-achieve the same range query bounds on disk as in memory, rather than to build
-the fastest structure possible.
+minimize the overhead in disk reads during a query than to build the fastest
+structure possible.
 
 \subsection{Range B-Trees}
 
 The standard data structures used for implementing many table-style databases
-are the B Tree, and the modified version, the B+ Tree. As a quick overview, a B
+are the B Tree, and a modified version, the B+ Tree. As a quick overview, a B
 Tree is a search tree with a branching factor of $B$, i.e., each node points to
 at most $B$ children. A B+ Tree is an extension of the B Tree in which all data
 is stored at the leaves of the tree, and each leaf has a pointer to its
@@ -156,29 +155,27 @@ The orthogonal range tree is a structure covered in 6.851 which allows
 $O(\log^d n + k)$ range queries on $d$ dimensions. For HODOR, we extend the B+
 Tree structure with orthogonal, recursive linked trees to create B+ Orthogonal
 Range Trees (BORTs). Each node $n$ in a BORT has a dimension $d$, a set of $B$
-child pointers sorted in $d$, and a pointer to another BORT containing all of
-the data points contained in $n$'s subtree, known as $n$'s \textit{linked
-tree}. When $n$ is loaded into memory, it brings with it all $B$ child pointers
-and one link pointer. Therefore, a search on $n$ data points indexed in $d$
-dimensions touches $O(log^d_B n)$ nodes, which requires $O(log^d_B n)$ disk
-accesses.  However, as we will describe below, not all disk accesses are equal,
-and we can achieve better in-practice running times by laying out serialized
-nodes intelligently on disk.
+child pointers sorted in dimension $d$, and a pointer to another BORT containing
+all of the data points contained in $n$'s subtree, known as $n$'s \textit{linked
+tree}. When $n$ is loaded from disk into memory, it brings with it all $B$ child
+pointers and one link pointer. However, as we will describe below, not all disk
+accesses are equally costly, and we can improve runtimes in practice by laying
+out serialized nodes intelligently on disk.
 
 \subsection{Node Serialization}
 
-In order to store range trees on disk, we require an efficient method to
-serialize and deserialize the data structure. In HODOR, we represent a Python
-\ms{RangeTree} instance as a list of serialized nodes, which may be instances of
-\ms{RangeNode} or \ms{RangeLeaf}. This list is stored in a \textit{tree file}, which
-can be written to and read by a \ms{Serializer} class. 
+In order to store BORTs on disk, we require an efficient method to serialize and
+deserialize the data structure. In the Python implementation of HODOR, we
+represent a \ms{RangeTree} instance as a list of serialized nodes, which may be
+instances of \ms{RangeNode} or \ms{RangeLeaf}. This list is stored in a
+\textit{tree file}, which can be written to and read by a \ms{Serializer} class. 
 
 % Talk about how serializer does not actually append nodes, but puts them on top
 % of a stack, then pops everything off of the stack in the dumps() method?
 During preprocessing, when building the tree from a set of datapoints,
 \ms{Serializer} is initialized in write mode to build the tree file. In write
-mode, \ms{Serializer} exposes a \ms{dumps(node)} method that accepts a
-node instance, serializes the node, and adds it to the top of a \textit{node stack},
+mode, \ms{Serializer} exposes a \ms{dumps(node)} method that accepts a node
+instance, serializes the node, and adds it to the top of a \textit{node stack},
 a temporary data structure which holds serialized nodes before the whole tree is
 flushed to disk. This method also assigns the node a pointer into the tree file,
 equal to the number of nodes which have already been serialized. As the size of
@@ -198,8 +195,6 @@ So, to give a parent access to its child, we simply store the child's tree file
 pointer as an attribute of the parent. \ms{loads} is implemented by seeking to
 the pointer in the tree file and reading out a single node's worth of bytes.
 
-% maybe some of this should go into Implementation details maybe something
-% about cPickle vs struct
 The seeking method varies by serializer. In HODOR, we test two main node
 serialization methods. The first is to use a delimiting character, such as a
 newline, between nodes. The second is to pack nodes into fixed-length strings,
@@ -207,20 +202,20 @@ called \textit{blocks}.
 
 Delimited strings are convenient because they support arbitrarily sized
 datapoint values. However, seeks may be costly in performance even with Python
-optimizations like line iterator or linecache features \cite{linecache}.
+optimizations like the line iterator or the \ms{linecache} module
+\cite{linecache}.
 
 On the other hand, when nodes are stored as blocks, a node's exact byte
-position can be calculated from its file pointer and seeked directly, yielding
-a lower performance cost when reading disk. However, fixed-length blocks may
-limit the type and size of data that can be stored. This can be solved by
+position can be calculated from its file pointer and jumped to directly,
+yielding a lower performance cost for \ms{loads}. However, fixed-length
+blocks limit the type and size of data that can be stored. This can be solved by
 storing the data points themselves as delimited strings in a separate
-\textit{database file} and storing pointers to this data in the leaves of the
-ORT. A range query can return a set of pointers into the database file that can
+\textit{data file} and storing pointers to this data in the leaves of the
+BORT. A range query can return a set of pointers into the data file that can
 be sorted and used to access the actual data sequentially from the file. This
-method requires one extra disk read for each of the $k$ datapoints in the
-result set, but no extra back seeks.
-
-% stats on block serializer vs line serializer here?
+method requires one extra disk read for each datapoint in the result set, but no
+extra back seeks. Our final implentation of HODOR uses the block serialization
+method.  
 
 \subsection{Tree Serialization}
 
@@ -258,14 +253,14 @@ done.  Otherwise, HODOR recurses on the parents.
 % move fig 1 here
 HODOR serializes the nodes in the same order that they are created. In the
 recursion for a set of children, all children are serialized first, followed by
-the linked subtree for each parent node, followed by the node itself. Each
-child is serialized before its parent, and each parent is serialized
+the linked subtree for each parent node, followed by the parent node itself.
+Each child is serialized before its parent, and each parent is serialized
 immediately after its linked subtree in the next dimension. This forms a series
-of levels \cite{seinfeld} for each tree [FIGURE 1]. Consider a BORT $t$. Each
-node $n$ in $t$ falls in the same level as all of $n$'s siblings. The entirety
-of $n$'s linked subtree, which is indexed in the next dimension, also falls in
-this same level of $t$. All of $n$'s children and their linked subtrees fall in
-the level below $n$'s, and $n$'s parent falls in the level above. 
+of levels \cite{seinfeld} for each tree (see Figure 1). Consider a BORT $t$.
+Each node $n$ in $t$ falls in the same level as all of $n$'s siblings. The
+entirety of $n$'s linked subtree, which is indexed in the next dimension, also
+falls in this same level of $t$. All of $n$'s children and their linked subtrees
+fall in the level below $n$'s, and $n$'s parent falls in the level above. 
 
 All the leaves of the tree in the first dimension are in that tree's lowest
 level, and are therefore serialized first. The root of the same tree is in the
@@ -289,15 +284,13 @@ each linked subtree follow the same pattern.
 \end{figure}
 
 % move fig 2 here
-Once we finish building the tree, we flush the nodes in the stack to the tree file on disk
-in reverse order of serialization, as described above. This way, each node will
-fall after all of its ancestors [FIGURE 2]. In the final disk layout, the root
-of the tree in the first dimension is the first node in the file, and the leaves
-of the same tree occur last in the file. This layout allows us to always read
-forward through the file as we traverse downwards from any node, as we do in a
-range query. Since each node falls immediately before its linked subtree in the
-next dimension, we also read forward through the file when traversing from one
-dimension to the next. All of the siblings in one level were originally pushed
+Once we finish building the tree, we flush the nodes in the stack to the tree
+file on disk in reverse order of serialization, as described above. This way,
+each node will fall after all of its ancestors (see Figure 2). In the final disk
+layout, the root of the tree in the first dimension is the first node in the
+file, and the leaves of the same tree are last in the file. This layout allows
+us to always read forward through the file as we traverse downwards from any
+node in a range query. All of the siblings in one level were originally pushed
 onto the stack in order, so when they are popped from the stack, they will be
 written in reverse order. Then, within each level, the maximum-valued sibling
 now comes first and the minimum-valued sibling now comes last. 
@@ -309,17 +302,16 @@ disk reads. A disk read is needed to load any serialized node into memory.
 Therefore, the algorithm requires one disk read to access any node it has not
 previously seen.
 
-In our analysis, we will focus on measuring disk reads in two categories.
-Assuming we are reading blocks from one continuous file on disk,
-\textit{forward seeks} are defined as reads from a location after the current
-file pointer. \textit{Back seeks} are reads from a location before the current
-pointer. In our disk-memory model, forward seeks are, in general, much faster
-than back seeks. When accessing file blocks in sequential order, the blocks can
-be loaded into memory at speeds approaching the disk's maximum read speed.
-However, if a file block at position $i-1$ is accessed immediately after the
-file block at $i$, the disk must make a complete revolution before block $i-1$
-can be loaded. On a typical drive spinning at 7200 RPM, this revolution takes
-over 8 milliseconds.
+In our analysis, we focus on measuring disk reads in two categories.  Assuming
+we are reading blocks from one continuous file on disk, \textit{forward seeks}
+are defined as reads from a location after the current file pointer.
+\textit{Back seeks} are reads from a location before the current pointer. In our
+disk-memory model, forward seeks are, in general, much faster than back seeks.
+When accessing file blocks in sequential order, the blocks can be loaded into
+memory at speeds approaching the disk's maximum read speed.  However, if a file
+block at position $i-1$ is accessed immediately after the file block at $i$, the
+disk must make a complete revolution before block $i-1$ can be loaded. On a
+typical drive spinning at 7200 RPM, this revolution takes over 8 milliseconds.
 
 In addition to minimizing total disk reads, we tried to eliminate back seeks
 wherever possible when designing HODOR. We will analyze our data structures in
@@ -337,15 +329,15 @@ is shown in Algorithm 1.
     \begin{algorithmic}[1]
         \Require{\nod\textsc{Ranges} is a dictionary of (start, end) range
             tuples indexed by dimension, $n$ is a node, and $d$ is an integer
-            representation of the dimension $n$ is indexed by. 0 is the last
-            dimension.
+            representation of the dimension by which $n$ is indexed. 0 is the
+            last dimension.
             }
         \Statex
         \Function{RangeQuery}{Ranges, $n$, $d$}
             \Let{$start, end$}{Ranges[$d$]}
             \If{$d = 0$}
                 \Let{$leaf_{end}$}{\Call{GetLeafContaining}{$end$}}\Comment{Search
-                    for the leaf containing $end$}
+                for the leaf containing $end$}
                 \State \Return\Call{GetRange}{$leaf_{end}$, $start$}\Comment{Get all
                     leaves in this dimension's range}
             \EndIf
@@ -378,12 +370,12 @@ is shown in Algorithm 1.
 
 Let $m$ be the total number of elements in the subtree of node $n$. In the base
 case, the node is in the last dimension, and the function is reduced to a search
-and a \textsc{GetRange} call. \textsc{GetRange} is a function which returns all
-leaves in a range from this node's subtree. It is accomplished by starting from
-the leaf containing the maximum value and walking backwards along the leaf's
-\ms{prev} pointers until the leaf containing the minimum value is found. This
-entire operation takes $O(\log_B m + k)$ reads: the search down the tree
-touches $\log_B m$ nodes, and the walk touches $k$ leaves.
+and a \textsc{GetRange} call. \textsc{GetRange} is a function, shown in
+Algorithm 2, which returns all leaves in a range from this node's subtree. It is
+accomplished by starting from the leaf containing the maximum value and walking
+backwards along the leaf's \ms{prev} pointers until the leaf containing the
+minimum value is found. This entire operation takes $O(\log_B m + k)$ reads: the
+search down the tree touches $\log_B m$ nodes, and the walk touches $k$ leaves.
 
 The algorithm makes two different types of recursive calls. First, the $O(B)$
 nodes which are fully contained in the range (start, end) are loaded into
@@ -412,25 +404,26 @@ $O(\frac{m}{B})$ elements.
     \end{algorithmic}
 \end{algorithm}
 
-The logic at the leaf level is shown in Algorithm 2. Once \textsc{RangeQuery} is
+Once \textsc{RangeQuery} is
 called on a leaf, the leaf will either return some subset of its data, which is
 already loaded, or recurse on a linked leaf in the next dimension. This requires
-one disk read per dimension, for $O(d)$ in total. 
+one disk read per dimension, for $O(d)$ reads in total. 
 
 Let the disk-read complexity of the algorithm with $m$ nodes and $d$ dimensions
-equal T($m, d$). Each of the constant number of child node recursions takes
-T($\frac{m}{B}, d$) reads. Using analysis similar to that in Lecture 3, this
-evaluates to $O(\log_B m)$ reads total for any tree \cite{lecture}. In the last
-dimension, there is also the possibility of a leaf-to-leaf walk, so the
-complexity jumps to $O(\log_B m + k)$ reads. 
+equal T($m, d$). Each of the constant number of child node recursions operates
+on $\frac[m}{B}$ elements, and takes T($\frac{m}{B}, d$) reads. Using analysis
+similar to that used in Lecture 3, this evaluates to $O(\log_B m)$ reads total
+for any tree \cite{lecture}. In the last dimension, there is also the
+possibility of a leaf-to-leaf walk, so the total complexity becomes $O(\log_B m
++ k)$ reads. 
 
-Each one of the linked-tree node recursions operates on $(O(\frac{m}{B})$
+Each one of the linked-tree node recursions operates on $O(\frac{m}{B})$
 elements, on $d-1$ dimensions, so the total reads from all $O(B)$ of these
-operations is $T(m, d-1)$. Therefore, again using logic similar to the runtime
-analysis in lecture 3, we see that running the entire algorithm from the root
-node of a BORT makes $O(\log_B^d m + k)$ reads from the disk. In the sections
-below, we will analyze how we can bound the \textit{types} of disk reads we have
-to make.
+operations is at most $B \cdot$ T($\frac{m}{B}, d-1$). Therefore, again using
+logic similar to the runtime analysis in lecture 3, we see that running the
+entire algorithm from the root node of a BORT makes $O(B^{d-1}\cdot\log_B^d m +
+k)$ reads from the disk. In the sections below, we will analyze how we can bound
+the \textit{types} of disk reads we have to make.
 
 \subsection{Back Seek Analysis}
 
@@ -438,15 +431,15 @@ We want to order the node accesses during a range query so that we do as many
 consecutive forward seeks as possible, while eliminating back seeks. Here we
 analyze the worst-case back seek count for the given range query algorithm by
 counting the number of back seeks needed for each recursion, using figure 1 as a
-reference for the order that we access nodes. 
+reference. 
 
-As discussed in section 2.4, the nodes are structured into recursive levels on disk,
-where each level contains a node, all of its siblings, and its linked subtree
-in the next dimension. The number of back seeks we do during each recursion
-depends on the order in which nodes of the same level are accessed and the
-order in which the levels themselves are accessed. Each level is sorted in
-reverse order, so if a node is accessed after its left sibling, it will cost
-one back seek. For each tree, the levels themselves are sorted in order from
+As discussed in section 2.4, the nodes are structured into recursive levels on
+disk, where each level contains a node, all of its siblings, and its linked
+subtree in the next dimension. The number of back seeks we do during each
+recursion depends on the order in which nodes of the same level are accessed and
+the order in which the levels themselves are accessed. Each level is sorted in
+reverse order, so if a node is accessed after its left sibling, it will cost one
+back seek. For each tree, the levels themselves are sorted in order from
 ``highest'' (root) to ``lowest'' (leaves), so if a node's ancestor is accessed
 after the node itself, it will also cost one back seek. 
 
@@ -455,55 +448,54 @@ The range query recursion starts at the root of a subtree, illustrated by node
 when the range query accesses the root's children, all work is done in the same
 level. This is the level after the root's, or level 1 in figure 1. Each level
 is sorted in reverse order in the file, so if the range query accesses the
-children from max to min (right to left), then no back seeks are needed to load
-the root's children. Because the range query always traverses downwards, we
-never return to the root's level (level 2) once we access the children's level
-(level 1). 
+children from max to min (right to left in the figure), then no back seeks are
+needed to load the root's children. Because the range query always traverses
+downwards, we never return to the root's level (level 2) once we access the
+children's level (level 1). 
 
 We analyze the back seeks needed for the two types of recursive calls on a child
 by examining the node and level access order. The linked-tree recursion case is
-illustrated by node 2. Suppose node 2's entire range is contained in the queried
-interval, so we recurse on its linked node, node 5. Note that the linked
+illustrated with node 2. Suppose node 2's entire range is contained in the queried interval, so we recurse on its linked node, node 5. Note that the linked
 subtree at node 5 falls in the same level as node 2, so the recursive call on
 node 5 stays within level 1. Also, since a node occurs immediately before its
 linked subtree in the disk layout, we can make the recursive call to node 5
 directly after loading node 2 in order to avoid back seeks within the same
-level. Thus, a recursive call of the first case costs nothing in back seeks.
+level. Thus, a linked-tree recursion costs nothing in back seeks.
 
-The child node recursion case can be illustrated by node 1, in level 1. Suppose
-that node 1 contains \ms{start}, so we recurse on node 1 and load its children
-in 0. Level 1 comes before level 0 on disk, so we can load node 1's children by
-seeking forward. However, if the range query ever has to access level 1 again, a
-back seek will be needed to return from level 0. This happens whenever the
-recursive call on a node is followed by a recursive call on one of that node's
-siblings. For example, the recursive call on node 1 will traverse down the tree,
-ending at some level below 1 in the tree file. If we next recurse on one of the
-nodes 2-4, it will cost one back seek to return back to level 1. In other words,
-during the recursion on node 0, if more than one recursive call of the second
-case is made, then every call but the last will contribute one back seek. \\
+The child node recursion case can be illustrated with node 1, in level 1.
+Suppose that node 1 contains \ms{start}, so we recurse on node 1 and load its
+children in level 0. Level 1 comes before level 0 on disk, so we can load node
+1's children by seeking forward. However, if the range query ever has to access
+level 1 again, a back seek will be needed to return from level 0. This happens
+whenever the recursive call on a node is followed by a recursive call on one of
+that node's siblings. For example, the recursive call on node 1 will traverse
+down the tree, ending at some level below 1 in the tree file. If we then recurse
+on one of the nodes 2-4, it will cost one back seek to return back to level 1.
+In other words, during the recursion on node 0, if more than one child node
+recursive call is made, then every call but the last will contribute one
+back seek. \\
 
 \begin{lemma}
-    According to the given algorithm, there will be at most $O(\log_B^{d-1}n)$
+    According to the given algorithm, there will be $O(\log_B^{d-1}n)$
     back seeks, where $d$ is the number of dimensions and $B$ is the
     branching factor. 
 \end{lemma}
 \begin{proof}
-    As we noted above, during each recursion step, any recursive call of the
-    second case (child node recursion) that is followed by another recursive
-    call in the same step contributes one back seek. A recursive call of the
-    second case can only be called on a child whose range is not completely
-    contained within the queried interval, and whose range contains the
-    \ms{start} or \ms{end} point. So, for each recursive step, there will be at
-    most two recursive calls of the second case. If there is zero or one, then
-    the recursive step does not contribute any back seeks. If there are two, the
-    recursive step contributes exactly one back seek.
+    As we noted above, during each recursion step, any child node recursive call
+    that is followed by another recursive call in the same step contributes one
+    back seek. A child node recursive call can only be called on a child
+    whose range is not completely contained within the queried interval, and
+    whose range contains the \ms{start} or \ms{end} point. So, for each
+    recursion, there will be at most two such recursive calls. If there are zero
+    or one such calls, then there are no back seeks. If there are two, there is
+    exactly one back seek.
 
     \begin{figure}[h!]
         \centering
         \vspace{0.5in}
         \includegraphics[width=0.6\textwidth]{fig3.eps}
         \caption{
-            A range query on one tree layer of the entire ORT can be modeled as
+            A range query on one tree layer of the entire BORT can be modeled as
             a search for the predecessor of $start$, leaf 5, and the successor
             of $end$, leaf 6 \cite{lecture}. The unlabeled nodes are those
             whose linked subtrees must be queried. The least common ancestor of
@@ -511,8 +503,7 @@ case is made, then every call but the last will contribute one back seek. \\
             on node 2, the algorithm makes recursive calls on two of node 2's
             children, one on node 3 and the other on node 4. The
             \textsc{RangeQuery} recursions on all other nodes in this layer,
-            including 0, 1, 3 and 4, require only one recursive call on each
-            node's child.
+            including 0, 1, 3 and 4, require only one child node recursive call.
         }
         \vspace{0.5in}
     \end{figure}
@@ -524,21 +515,21 @@ case is made, then every call but the last will contribute one back seek. \\
     by node 2, the \ms{lca} of nodes 5 and 6, in figure 3. By definition,
     \ms{lca} has one child (node 3) containing \ms{start} and a different child
     (node 4) containing \ms{end}, each requiring one recursive call. Each node
-    that is an ancestor of \ms{lca} (nodes 0 and 1) covers the range of
+    that is an ancestor of \ms{lca} (nodes 0 and 1) covers
     \ms{lca}'s range, so it has a child that contains both \ms{start} and
     \ms{end}. Only one recursive call on this child is needed. Each node that is
     a descendant of \ms{lca} (nodes 3 and 4) can have at most one child that
     contains either \ms{start} or \ms{end}, not both, since \ms{start} and
-    \ms{end} were contained in different children of \ms{lca}. 
+    \ms{end} are contained in different children of \ms{lca}. 
 
-    Recursing on an \ms{lca} can happen at most once during a range query on a
-    linked tree. Therefore, the total number of back seeks performed by a range
-    query is bounded above by the number of distinct linked trees that are
-    queried. Using a similar analysis to the one given in lecture 3, this is
-    $O(1)$ for 1 dimension, since there is only one tree. It is $O(\log_B n)$
-    for 2 dimensions, since we recurse on at most $O(\log_B n)$ linked subtrees
-    in the second dimension. Recursing on $d$, we get $O(\log_B^{d-1}n)$ for $d$
-    dimensions.
+    Recursing on a least common ancestor can happen at most once during a range
+    query on a linked tree. Therefore, the total number of back seeks performed
+    by a range query is bounded above by the number of distinct linked trees
+    that are queried. Using a similar analysis to the one given in lecture 3,
+    this is $O(1)$ for 1 dimension, since there is only one tree. It is
+    $O(\log_B n)$ for 2 dimensions, since we recurse on at most $O(\log_B n)$
+    linked subtrees in the second dimension. Recursing on $d$, we get
+    $O(\log_B^{d-1}n)$ for $d$ dimensions.
 
 \end{proof}
 
@@ -550,75 +541,53 @@ ensuring that by the time we traverse downward from some node, all work that
 will ever be done in that node's level has already finished. The work done on
 that node's level is the work involving that node, its children, and its linked
 subtree in the next dimension. Here, we propose a modified algorithm that
-accomplishes this and analyze its complexity in back seeks.
+accounts for the level structure and analyze its complexity in back seeks.
 
-Like the naive algorithm, the modified algorithm starts at the root of the tree
+Like the na{\"i}ve algorithm, the modified algorithm starts at the root of the tree
 in the first dimension. However, rather than recursing on one node at a time,
 the modified algorithm recurses on a set of nodes. Similar to before, the
-algorithm determines which out of the current set of nodes cover ranges that
+algorithm determines which of the current set of nodes cover ranges that
 fall completely within the queried interval. For these nodes, the algorithm
-makes a recursive call to the linked nodes, as in the naive algorithm. However,
-for the second case of the recursive call, when a node in the current set has a
-range containing \ms{start} or \ms{end}, the algorithm does not recurse
-immediately on that node's children. Instead, the algorithm collects the
-children of these nodes in the current set, and recurses on the union of the
-children.
+makes a recursive call to the linked nodes, as in the na{\"i}ve algorithm. However,
+for a child node recursive call, when a node in the current set has a range
+containing \ms{start} or \ms{end}, the algorithm does not make the call
+immediately. Instead, the algorithm collects the children of each such node in
+the current set, and recurses on the union of the children.
 
 % prove that the current set of nodes is all in the same level, so that we can
 % guarantee no back seeks between nodes in the current set
 To show that the modified algorithm does not require any back seeks, we first
-prove that for any recursive call, the nodes in the current set are all in the
+note that for any recursive call, the nodes in the current set are all in the
 same level. Then, if we do our work for each node in order of max to min, the
 order in which the siblings are laid out on disk, we will avoid all back seeks
 between nodes in the current set. \\
 
-\begin{lemma}
-    For any recursive call during the modified algorithm, the set of nodes that
-    is recursed upon falls in the same level. 
-\end{lemma}
-\begin{proof}
-    We can prove this by showing that it is an invariant. Assume that the nodes
-    in the set for the current recursion are all in the same level. From here,
-    we may recurse on the node's linked node or we may recurse on the combined
-    children of some number of nodes in the current set. The linked node is a
-    set of one. Each child of a parent falls in the level immediately after the
-    parent's level, so the combined children of the current set all fall within
-    the same level. In either case, any recursive call that we make will be on
-    a set of nodes that are all in the same level. We begin the entire range
-    query from a set of one, the root of the tree in the first dimension.
-    Therefore, any recursive call that we make will be upon a set of nodes in
-    the same level. 
-\end{proof}
-
-% prove that we never need to come back to this level
 Since we do not require any back seeks between nodes in the current set, the
-only other possible source of back seeks is from the recursive calls. We know
-from the lemma that the current set of nodes for a recursion is in the same
-level. The case when we do a recursive call on one of the nodes' linked
-subtrees is then the same as in the naive algorithm; these do not cost any back
-seeks since we remain in the same level and can do all the recursive calls in
-order of disk layout. 
+only other possible source of back seeks is from the recursive calls.  The case
+when we do a linked-node recursive call is then the same as in the na{\"i}ve
+algorithm; these do not cost any back seeks since we remain in the same level
+and can do all the recursive calls in order of disk layout. 
 
-The other case is when we do a recursive call on the union of some nodes'
-children. In this case, we are accessing the level after the current set's
-level. If we do this recursive call after recursing on the linked subtrees, we
-will never return to the current nodes' level, and will therefore not need any
-back seeks following this recursive call. Thus, each recursion, and therefore
-the modified algorithm as a whole, does not require any back seeks.
+The other case is when we do a recursive call on the union of a few nodes'
+children. In this case, we access the level after the current set's level. If we
+perform this recursive call after all linked-node recursive calls, we will never
+return to the current set's level, and will therefore not need any back seeks.
+Thus, each recursion, and therefore the modified algorithm as a whole, does not
+require any back seeks.
 
 \subsection{Results}
 
-We implemented HODOR in Python, and tested it with large, arbitrary data sets of
-random number tuples. We tracked forward seeks and back seeks during testing to
-see whether our data structure performed as expected in practice. After several 
-iterations of range query algorithm, we were able to achieve range queries
-without any back seeks, verifying that our analysis above was correct. 
+We implemented HODOR in Python, and tested it with random data sets. We tracked
+forward seeks and back seeks during testing to see whether our data structure
+performed as expected in practice. After several iterations of the range query
+algorithm, we were able to achieve range queries without any back seeks,
+verifying our analysis above. 
 
 It would be interesting to analyze the performance of HODOR against that of
 range queries in traditional databases. However, we did not have a chance to
 properly optimize for speed or memory usage in our implementation. In addition,
-Python is inherently less suited to low-level tasks like data serialization and
-speedy I/O than languages like C. Working around (or controlling for) its
+Python is inherently less suited to low-level tasks like serialization and
+disk I/O than languages like C. Working around, or controlling for, Python's
 limitations in order to generate valid comparison data was outside the scope of
 this project. 
 
@@ -627,42 +596,30 @@ https://github.com/%TODO LINK.
 
 \section{Conclusion}
 
-% note about our model: we've dealt with things in terms of time and space
-% before, and we dealt with disk accesses in cache-obliviousness, but this is
-% cool ... and stuff
-We found in our results that not all data accesses are equal in performance.
-Back seeks, or seeks that require reading at a point earlier than the current
-file position, require significantly more time than forward seeks. Thus, when
-implementing on-disk data structures, it is critical to consider the number of
-back seeks required during each operation. 
-
 % it is possible to eliminate back seeks
-Our analysis model assumes that forward seeks are significantly faster than
-back seeks. We believe that this model is relevant given the current state of
-hard disk technology, and that it is therefore critical to consider the number
-of back seeks required during on-disk data structure operations. 
+In our work on HODOR, we introduce a performance model to reflect the current
+state of hard disk technology.  Our analysis model assumes that forward seeks
+are significantly faster than back seeks. Under this model, it is therefore
+critical to consider the number of back seeks required during on-disk data
+structure operations. 
 
-With a naive recursive range
-query implementation, it is possible to
-achieve $O(\log_B^d n)$ back seeks by using a similarly recursive disk
-layout. With the same disk layout, it is possible to achieve no back seeks at
-all by adjusting the range query implementation to better fit the levels
-structure in the disk layout. Therefore, our work in HODOR shows that for
-orthogonal range trees, it is possible to eliminate back seeks by adjusting the
-disk layout and the implementation of the range tree operations to account for
-each other. 
+With a na{\"i}ve recursive range query implementation, it is possible to achieve
+$O(\log_B^d n)$ back seeks by using a similarly recursive disk layout. With this
+disk layout, it is possible to perform queries without back seeks by adjusting
+the range query implementation to better fit the levels structure in the disk
+layout. Therefore, our work in HODOR shows that we can achieve better
+performance with an operation-aware serialization procedure and
+serialization-aware operations. 
 
 % back seek model can be applied to other data structures for a large dataset 
-Orthogonal range-trees can in theory achieve significant speedup over a
-traditional database, making it desirable to implement them efficiently on-disk.
-Still, they are just one of many data structures that are useful for storing
+Orthogonal range-trees can in theory achieve significant speedup over
+traditional databases, making it desirable to implement them efficiently
+on-disk. They are just one of many data structures that are useful for storing
 datasets too large for memory. We believe that the back seek model used to
 analyze HODOR's performance would be effective for analysis of other such
-on-disk data structure implementations. We showed in HODOR that while back seeks
-are costly in performance, they are also avoidable with an operation-aware
-serialization procedure and serialization-aware operations. Thus, we are hopeful
-that the results from HODOR can be used as a basis for optimizing future
-implementations of on-disk data structures. 
+on-disk data structure implementations. Thus, we are hopeful that the results
+from HODOR can be used as a basis for optimizing future implementations of
+on-disk data structures. 
 
 \begin{figure}[b]
     GitHub: https://github.com/kathrynsiegel/buzhug-ort
