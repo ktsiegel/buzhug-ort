@@ -89,7 +89,7 @@ def build_test():
     assert len(result) == len(root3.get_range_data(start, end))
 
 def unit_search_test():
-    search(10, 1, 15000)
+    search(10, 1, 1500)
     assert False
 
 def unit_test():
@@ -157,6 +157,6 @@ def search(B, num_query, num_items):
 
     print serializer.normal_seeks, 'forward seeks averaged',\
         10**6 * serializer.normal_seek_time / serializer.normal_seeks, 'microseconds each'
-    print serializer.back_seeks, 'back seeks averaged',\
-        10**6 * serializer.back_seek_time / serializer.back_seeks, 'microseconds each'
-    print len(result)/B
+    print serializer.back_seeks#, 'back seeks averaged',\
+    #    10**6 * serializer.back_seek_time / serializer.back_seeks, 'microseconds each'
+    #print len(result)/B

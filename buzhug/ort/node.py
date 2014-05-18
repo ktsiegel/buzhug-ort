@@ -141,7 +141,7 @@ class RangeNode(object):
                     loaded_end_child = True
 
             # 2: do all of the fully-contained children
-            if ei >= si:
+            if ei >= si and (type(end_child) == RangeNode or end_child is None):
                 for i in reversed(xrange(si, ei + 1)):
                     c = self.load_child(self.children[i])
                     # We know the child has a link because it's the same dimension
@@ -172,15 +172,20 @@ class RangeNode(object):
                     start_child = self.load_child(self.children[si-1])
                     end_child.children = start_child.children + end_child.children
                 results.extend(end_child.range_query(ranges))
-                print 'Node code backseek at ' + str(self.serializer.back_seeks) \
-                        * (self.serializer.back_seeks > bs)
+                if bs != self.serializer.back_seeks:
+                    print 'HodorHodor'
             elif end_child is not None:
                 results.extend(end_child.range_query(ranges))
+                if ei >= si:
+                    for i in reversed(xrange(si, ei + 1)):
+                        c = self.load_child(self.children[i])
+                        # We know the child has a link because it's the same dimension
+                        results.extend(c.link().range_query(nranges))
                 if should_load_start:
                     start_child = self.load_child(self.children[si-1])
+                    if bs != self.serializer.back_seeks:
+                        print 'Hodor'
                     results.extend(start_child.range_query(ranges))
-                print 'Leaf code backseek at ' + str(self.serializer.back_seeks) \
-                        * (self.serializer.back_seeks > bs)
 
             return results
 

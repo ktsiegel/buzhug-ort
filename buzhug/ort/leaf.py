@@ -103,9 +103,9 @@ class RangeLeaf(RangeNode):
         bs = self.serializer.back_seeks
         pos = self.serializer.pos
         their_results = self.link().range_query(nranges)
-        print ('Backseek! \n' + str(self) + '\nLast pos was ' +\
-                str(self.serializer.loads(pos - 1))) * \
-                        (self.serializer.back_seeks > bs)
+        #print ('Backseek! \n' + str(self) + '\nLast pos was ' +\
+        #        str(self.serializer.loads(pos - 1))) * \
+        #                (self.serializer.back_seeks > bs)
 
         # Check each one of the lower level's results to see if it's included in
         # our range.
