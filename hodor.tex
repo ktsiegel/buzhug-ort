@@ -65,11 +65,17 @@ Katie Siegel (ksiegel@mit.edu)\\[2ex]
 
 \begin{abstract}
 
-    HODOR hodor hodor, HODOR hodor hodor hodor hodor. HODOR hodor HODOR
-    \textit{HODOR HODOR} hodor hodor hodor HODOR. HODOR, "hodor hodor," hodor
-    hodor HODOR hodor hodor. HODOR hodor hodor HODOR hodor HODOR. \\
-
-    GitHub: https://github.com/kathrynsiegel/buzhug-ort
+    Orthogonal range trees are simple to implement in memory, but implementing
+    them as cache aware, on-disk data structures is a more involved task. In this
+    paper, we describe HODOR, a system which allows efficient range queries on
+    static data sets indexed with comparable values in an arbitrary number of
+    dimensions. Since disk reads are costly, we analyzed our structure in terms
+    of the number of reads per query. In our analysis model, forward-seeking
+    reads are faster than backward-seeking reads, so we attempt to minimize the
+    latter. HODOR achieves range queries with a polylogarithmic number of disk
+    reads, and never has to seek backwards on disk during a single range query.
+    We successfully implemented a version of HODOR in Python, and have posted
+    the code for public use on Github.
 
 \end{abstract}
 
@@ -611,41 +617,22 @@ the modified algorithm as a whole, does not require any back seeks.
 
 \subsection{Results}
 
-% stats
-\begin{figure}[h!]
-\centering
-\begin{tikzpicture}
-	\begin{loglogaxis}[
-		xlabel=Data Size (Total Entries),ylabel=Number of Seeks]
+We implemented HODOR in Python, and tested it with large, arbitrary data sets of
+random number tuples. We tracked forward seeks and back seeks during testing to
+see whether our data structure performed as expected in practice. After several 
+iterations of range query algorithm, we were able to achieve range queries
+without any back seeks, verifying that our analysis above was correct. 
 
-	\addplot[color=blue,mark=*] coordinates {
-		(1024,280524)
-		(4096,264056)
-		(16384,208401)
-		(65536,176031)
-		(262144,164698)
-        (1048576,156474)
-	};
-	\addplot[color=red,mark=*] coordinates {
-		(1024,16250)
-		(4096,4061)
-		(16384,1497)
-		(65536,1101)
-		(262144,1000)
-        (1048576,558)
-	};
-	\legend{$Forward\ seeks$,$Backward\ seeks$}
-	\end{loglogaxis}%
-\end{tikzpicture}%
-\caption{
-    The number of forwards and backwards seeks invoked by range queries varies
-    with the size of the data set in the orthogonal range tree. While
-    backwards seeks are far more costly than forward seeks, they are far
-    fewer in number, and the number of back seeks as a fraction of total seeks
-    decreases exponentially as the set of data points grows.
-}
-\label{fig:figure2}
-\end{figure}
+It would be interesting to analyze the performance of HODOR against that of
+range queries in traditional databases. However, we did not have a chance to
+properly optimize for speed or memory usage in our implementation. In addition,
+Python is inherently less suited to low-level tasks like data serialization and
+speedy I/O than languages like C. Working around (or controlling for) its
+limitations in order to generate valid comparison data was outside the scope of
+this project. 
+
+The code for HODOR is available to download from Github at
+https://github.com/%TODO LINK.
 
 \section{Conclusion}
 
@@ -653,7 +640,6 @@ the modified algorithm as a whole, does not require any back seeks.
 % before, and we dealt with disk accesses in cache-obliviousness, but this is
 % cool ... and stuff
     
-% not all reads are created equal
 We found in our results that not all data accesses are equal in performance.
 Back seeks, or seeks that require reading at a point earlier than the current
 file position, require significantly more time than forward seeks. Thus, when
@@ -661,14 +647,11 @@ implementing on-disk data structures, it is critical to consider the number of
 back seeks required during each operation. 
 
 % it is possible to eliminate back seeks
-While back seeks in Hodor took a significantly longer time than forward seeks,
-we did find that it was possible to eliminate back seeks by adjusting the tree
-serialization order and the range query algorithm so that they could work in
-unison. With a naive recursive range query implementation, it is possible to
+With a naive recursive range query implementation, it is possible to
 achieve $O(\log_B^d n)$ many back seeks by using a similarly recursive disk
 layout. With the same disk layout, it is possible to achieve no back seeks at
 all by adjusting the range query implementation to better fit the levels
-structure in the disk layout. Therefore, our work in Hodor shows that for
+structure in the disk layout. Therefore, our work in HODOR shows that for
 orthogonal range trees, it is possible to eliminate back seeks by adjusting the
 disk layout and the implementation of the range tree operations to account for
 each other. 
@@ -678,11 +661,11 @@ Orthogonal range-trees can in theory achieve significant speedup over a
 traditional database, making it desirable to implement them efficiently
 on-disk. Still, they are just one of many data structures that would be useful
 for representing a dataset too large for memory [Example?]. We believe that the
-back seek model used to analyze Hodor's performance would be effective for
+back seek model used to analyze HODOR's performance would be effective for
 analysis of other such on-disk data structure implementations. We showed in
-Hodor that while back seeks are costly in performance, they are also avoidable
+HODOR that while back seeks are costly in performance, they are also avoidable
 with an operation-aware serialization order and serialization-aware operations.
-Thus, we hope that the Hodor results may be used as a basis for optimizing
+Thus, we hope that the HODOR results may be used as a basis for optimizing
 future implementations of on-disk data structures. 
 
 \begin{figure}[b]
