@@ -204,10 +204,9 @@ serialization methods. The first is to use a delimiting character, such as a
 newline, between nodes. The second is to pack nodes into fixed-length strings,
 called \textit{blocks}. 
 
-Delimited strings are convenient because they support
-arbitrarily sized datapoint values. However, seeks may be costly in performance
-even with Python optimizations like line iterator or linecache features
-[CITATION]. 
+Delimited strings are convenient because they support arbitrarily sized
+datapoint values. However, seeks may be costly in performance even with Python
+optimizations like line iterator or linecache features \cite{linecache}.
 
 On the other hand, when nodes are stored as blocks, a node's exact byte
 position can be calculated from its file pointer and seeked directly, yielding
@@ -230,7 +229,7 @@ HODOR preprocesses them. The tree is built recursively, from the bottom up.
 HODOR starts with a set of children. If these are leaves, then HODOR sorts them
 in the primary dimension of the current tree. If the full set of leaves is too
 large to fit in memory, the algorithm can use funnel sort to arrange them on
-disk [CITATION]. Next, HODOR partitions the children into clusters of at most $B$ items.
+disk \cite{lecture9}. Next, HODOR partitions the children into clusters of at most $B$ items.
 For each of these clusters, HODOR creates a parent node and recurses to build
 the parent's linked tree in the next dimension, if any dimensions remain. If
 there is only one parent, then the parent is the root of the tree, and HODOR is
@@ -528,7 +527,7 @@ case is made, then every call except the last will contribute one back seek. \\
     For a range query on a tree, there is at most one recursive step that
     requires making two such recursive calls. This happens when the root node
     of the recursion is the least common ancestor (\ms{lca}) of the predecessor
-    of \ms{start} and the successor of \ms{end} [CITATION lecture 3]. This is
+    of \ms{start} and the successor of \ms{end} \cite{lecture}. This is
     illustrated by node 2, the \ms{lca} of nodes 5 and 6, in figure 3. By
     definition, \ms{lca} has one child (node 3) containing \ms{start} and a
     different child (node 4) containing \ms{end}, each requiring one recursive
@@ -638,7 +637,6 @@ https://github.com/%TODO LINK.
 % note about our model: we've dealt with things in terms of time and space
 % before, and we dealt with disk accesses in cache-obliviousness, but this is
 % cool ... and stuff
-    
 We found in our results that not all data accesses are equal in performance.
 Back seeks, or seeks that require reading at a point earlier than the current
 file position, require significantly more time than forward seeks. Thus, when
@@ -646,7 +644,13 @@ implementing on-disk data structures, it is critical to consider the number of
 back seeks required during each operation. 
 
 % it is possible to eliminate back seeks
-With a naive recursive range query implementation, it is possible to
+Our analysis model assumes that forward seeks are significantly faster than
+back seeks. We believe that this model is relevant given the current state of
+hard disk technology, and that it is therefore critical to consider the number
+of back seeks required during on-disk data structure operations. 
+
+With a naive recursive range
+query implementation, it is possible to
 achieve $O(\log_B^d n)$ many back seeks by using a similarly recursive disk
 layout. With the same disk layout, it is possible to achieve no back seeks at
 all by adjusting the range query implementation to better fit the levels
@@ -682,6 +686,12 @@ implementations of on-disk data structures.
         Performance Comparision.'' N.p.: \\
         http://tfk.mit.edu/pdf/2drangesearch\_datastructures.pdf, 25 May 2012.
         PDF.
+
+    \bibitem{linecache} Python linecache module documentation. \\
+        https://docs.python.org/2/library/linecache.html 
+
+    \bibitem{lecture9} Demaine, Erik. ``Lecture 9,'' March 15, 2012. MIT: \\
+        http://courses.csail.mit.edu/6.851/spring14/scribe/lec9.pdf, n.d. PDF.
 
     \bibitem{seinfeld} Cherones, Tom. ``The Pony Remark.'' \textit{Seinfeld.}
         NBC. 30 January 1991. Television.
