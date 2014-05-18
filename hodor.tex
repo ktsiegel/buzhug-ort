@@ -636,25 +636,19 @@ https://github.com/%TODO LINK.
 
 \section{Conclusion}
 
-% note about our model: we've dealt with things in terms of time and space
-% before, and we dealt with disk accesses in cache-obliviousness, but this is
-% cool ... and stuff
-    
-We found in our results that not all data accesses are equal in performance.
-Back seeks, or seeks that require reading at a point earlier than the current
-file position, require significantly more time than forward seeks. Thus, when
-implementing on-disk data structures, it is critical to consider the number of
-back seeks required during each operation. 
-
 % it is possible to eliminate back seeks
-With a naive recursive range query implementation, it is possible to
-achieve $O(\log_B^d n)$ many back seeks by using a similarly recursive disk
-layout. With the same disk layout, it is possible to achieve no back seeks at
-all by adjusting the range query implementation to better fit the levels
-structure in the disk layout. Therefore, our work in HODOR shows that for
-orthogonal range trees, it is possible to eliminate back seeks by adjusting the
-disk layout and the implementation of the range tree operations to account for
-each other. 
+Our analysis model assumes that forward seeks are significantly faster than
+back seeks. We believe that this model is relevant given the current state of
+hard disk technology, and that it is therefore critical to consider the number
+of back seeks required during on-disk data structure operations. 
+
+With a naive recursive range query implementation, it is possible to achieve
+$O(\log_B^d n)$ many back seeks by using a similarly recursive disk layout.
+With the same disk layout, it is possible to achieve no back seeks at all by
+adjusting the range query implementation to better fit the levels structure in
+the disk layout. Therefore, our work in HODOR shows that for orthogonal range
+trees, it is possible to eliminate back seeks by adjusting the disk layout and
+the implementation of the range tree operations to account for each other. 
 
 % back seek model can be applied to other data structures for a large dataset 
 Orthogonal range-trees can in theory achieve significant speedup over a
