@@ -231,11 +231,21 @@ there is only one parent, then the parent is the root of the tree, and HODOR is
 done.  Otherwise, HODOR recurses on the parents.
 
 % TODO: fix formatting
-\begin{figure}[h]
+\begin{figure}[h!]
     \centering
     \vspace{0.5in}
     \includegraphics[width=0.8\textwidth]{fig1.eps}
-    \caption{Awesome Image}
+    \caption{
+        The levels structure of the serialization order in the context of an
+        ORT. The nodes of the tree in the first dimension of this ORT are
+        serialized in three levels, each level in order of min to max or left
+        to right. First, level 0 is made up of the leaves in the first
+        dimension.  Second, level 1 is made up of the leaves' parents and each
+        of the parent's linked subtrees in the next dimension. Third, level 2
+        is made up of the root and its linked subtree, which contains all $n$
+        values.  The levels are serialized in this order as the tree is built,
+        but are flushed to disk in reverse order (see Figure 2).
+    }
     \vspace{0.5in}
 \end{figure}
 
@@ -256,10 +266,19 @@ level, and are therefore serialized first. The root of the same tree is in the
 tree's highest level, and is therefore serialized last. The leaves and root of
 each linked subtree follow the same pattern. 
 
-\begin{figure}[h]
+\begin{figure}[h!]
     \centering
     \includegraphics[width=1\textwidth]{fig2.eps}
-    \caption{Awesome Image}
+    \caption{
+        The final disk layout of the same ORT shown in Figure 1 after flushing
+        to disk. The nodes that were pushed onto the node stack in the order
+        given by figure 1 are popped off and appended to the final tree file in
+        the reverse order, shown here. Level 2, the root in figure 1, is now at
+        the beginning of the file, followed by level 1, and finally level 0,
+        the leaves in figure 1. Each of the levels is now in reverse order,
+        from max to min, and each node is immediately followed by its linked
+        subtree in the next dimension. 
+    }
     \vspace{0.5in}
 \end{figure}
 
@@ -313,8 +332,7 @@ is shown in Algorithm 1, in pseudocode.
         \Require{\nod\textsc{Ranges} is a dictionary of (start, end) range
             tuples indexed by dimension, $n$ is a node, and $d$ is an integer
             representation of the dimension $n$ is indexed by. 0 is the last
-            dimension. \\
-
+            dimension.
             }
         \Statex
         \Function{RangeQuery}{Ranges, $n$, $d$}
@@ -486,7 +504,19 @@ case is made, then every call except the last will contribute one back seek. \\
         \centering
         \vspace{0.5in}
         \includegraphics[width=0.6\textwidth]{fig3.eps}
-        \caption{Awesome Image}
+        \caption{
+            A range query on one tree layer of the entire ORT can be modeled as
+            a search for the predecessor of $start$, leaf 5, and the successor
+            of $end$, leaf 6 \cite{lecture}. The unlabeled nodes are those
+            whose linked subtrees must be queried. Leaves 5 and 6 share a least
+            common ancestor, node 2. During the \textsc{RangeQuery} recursion
+            on node 2, the algorithm makes recursive calls on two of node 2's
+            children, one on node 3 and the other on node 4. The
+            \textsc{RangeQuery} recursions on all other nodes in this layer,
+            including those on nodes 0, 1, 3 and 4, require only one recursive
+            call on the node's child. For example, the recursion on node 1
+            requires only one recursive call to node 2. 
+        }
         \vspace{0.5in}
     \end{figure}
 
@@ -582,7 +612,7 @@ the modified algorithm as a whole, does not require any back seeks.
 \subsection{Results}
 
 % stats
-\begin{figure}[h]
+\begin{figure}[h!]
 \centering
 \begin{tikzpicture}
 	\begin{loglogaxis}[
