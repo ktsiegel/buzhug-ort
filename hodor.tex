@@ -19,6 +19,7 @@
 \usepackage{pgfplots}
 \usepackage{verbatim}
 \usepackage{algorithmicx}
+\usepackage[outdir=./]{epstopdf}
 
 % Algorithms
 \usepackage{algorithm}
@@ -302,11 +303,12 @@ terms of both total reads and total back seeks in the sections below.
 \subsection{Disk read analysis}
 
 We will now examine the complexity of a search on a fully formed BORT, in terms
-of total disk reads. The algorithm for performing a range query on a (non-leaf)
-node is as follows, in pseudocode.
+of total disk reads. The logic for performing a range query on a (non-leaf) node
+is shown in Algorithm 1, in pseudocode.
 
 \begin{algorithm}[H]
-    \caption{Recursively find all elements in a multidimensional range}
+    \caption{Recursively find all elements in a multidimensional range from a
+        node's subtree.}
     \begin{algorithmic}[1]
         \Require{\nod\textsc{Ranges} is a dictionary of (start, end) range
             tuples indexed by dimension, $n$ is a node, and $d$ is an integer
@@ -319,7 +321,8 @@ node is as follows, in pseudocode.
             \Let{$start, end$}{Ranges[$d$]}
             \If{$d = 0$}
                 \Let{$pred$}{\Call{$n$.Predecessor}{$end$}}
-                \State \Return\Call{GetRange}{$pred$, $start$}
+                \State \Return\Call{GetRange}{$pred$, $start$}\Comment{Get all
+                    leaves in this dimension's range}
             \EndIf
             
             \State
@@ -345,8 +348,31 @@ node is as follows, in pseudocode.
 
             \State \Return{$r$}
         \EndFunction
-    \end{algorithmic}
-    \hspace{1cm}
+        \end{algorithmic}
+\end{algorithm}
+
+Let $m$ be the total of elements in the subtree of node $n$. In the base case,
+the node is in the last dimension, and the function is reduced to a
+\textsc{GetRange} call. \textsc{GetRange} is a function which returns all leaves
+in a range from this node's subtree. It is accomplished by searching for the leaf
+containing \ms{end}, and walking backwards along the link's \ms{prev} pointers
+until the leaf containing the minimum value is found. This operation takes
+$O(\log_B m + \frac{k}{B})$ reads: the search down the tree touches $\log_B m$
+nodes, and the walk touches $\frac{k}{B}$ leaves since each one holds $B$
+elements.
+
+The algorithm makes two different types of recursive calls. First, the
+$O(B)$ nodes which are fully contained in the range (start, end) are loaded into
+memory, and the algorithm recurses on the linked tree of each one. These
+linked-tree recursions can happen at most $d$ times in any query before the
+tree bottoms out. Second, the algorithm recurses on a constant number of its
+children (at most two) which contain the start and end values of the range.
+Using an analysis similar to lecture 3, for a tree in one dimension, this
+child node recursion can happen as many as $O(\log_B m)$ times before the search
+reaches the leaves \cite{lecture}. 
+
+\begin{algorithm}[H]
+    \caption{Find all elements in a multidimensional range from a tree leaf.}
     \begin{algorithmic}[1]
         \Require{$n$ is a leaf in the last dimension and has data representing
         $B$ elements of the tree. $start$ is the startpoint of the queried
@@ -363,27 +389,22 @@ node is as follows, in pseudocode.
     \end{algorithmic}
 \end{algorithm}
 
-In the base case, the node is in the last dimension, and the function is reduced
-to a \textsc{GetRange} call. \textsc{GetRange} is a function which returns all
-leaves in the range in this node's subtree. It is accomplished by searching for
-the leaf containing \ms{end}, and walking backwards along the link's \ms{prev}
-pointers until the leaf containing the minimum value is found. This operation
-takes $O(\log_B n + \frac{k}{B})$ reads, since each leaf contains $B$ elements.
+The logic at the leaf level is shown in Algorithm 2. Once \ms{range\_query} is
+called on a leaf, the leaf will either return some subset of its data, which is
+already loaded, or recurse on a linked leaf in the next dimension. This requires
+one disk read per dimension, for $O(d)$ in total. 
 
-% TODO: rewrite
-In total, each recursive call on a node involves $O(B)$ disk reads to load each of its $B$ children. Using an analysis similar to lecture 3, for a tree in one dimension, this can happen for as many as $O(\log_B n)$ nodes [CITATION]. , and
-recurses on $(O(\frac{n}{B})$ elements in its own dimension and $O(n)$ elements
-in the next dimension; the base case involves a maximum of $O(\log_B n +
-\frac{k}{B})$ reads. Therefore, running the entire algorithm from the root node
-of a BORT makes $O(\log_B^d n + k)$ reads from the disk. In the sections below,
-we will analyze how we can bound the \textit{types} of disk reads we have to
-make.
-
-% TODO: algorithm format
-The logic at the leaf level is not shown in the pseudocode. Once
-\ms{range\_query} is called on a leaf, the leaf will either return some subset
-of its data, which is already loaded, or recurse on a linked leaf in the next
-dimension, requiring one disk read per dimension. 
+Let the disk-read complexity of the algorithm with $m$ nodes and $d$ dimensions
+equal $R(m, d)$. Each one of the linked-tree node recursions operates on
+$(O(\frac{m}{B})$ elements, on $d-1$ dimensions, so the total reads from all $O(B)$
+of these operations is $R(m, d-1)$. Each of the constant number of child node
+recursions takes $O(\log_B m)$ reads on every dimension but the last. In the
+last dimension, there is the possibility of a leaf-to-leaf walk, so the
+complexity jumps to $O(\log_B m + \frac{k}{B})$ reads. Therefore, again using
+logic similar to the runtime analysis in lecture 3, we see that running the
+entire algorithm from the root node of a BORT makes $O(\log_B m + k)$ reads from
+the disk. In the sections below, we will analyze how we can bound the
+\textit{types} of disk reads we have to make.
 
 \subsection{Back seek analysis}
 
