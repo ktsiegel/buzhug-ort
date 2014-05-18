@@ -367,9 +367,7 @@ memory, and the algorithm recurses on the linked tree of each one. These
 linked-tree recursions can happen at most $d$ times in any query before the
 tree bottoms out. Second, the algorithm recurses on a constant number of its
 children (at most two) which contain the start and end values of the range.
-Using an analysis similar to lecture 3, for a tree in one dimension, this
-child node recursion can happen as many as $O(\log_B m)$ times before the search
-reaches the leaves \cite{lecture}. 
+Each of these child node recursions operates on $O(\frac{m}{B})$ elements.
 
 \begin{algorithm}[H]
     \caption{Find all elements in a multidimensional range from a tree leaf.}
@@ -395,16 +393,19 @@ already loaded, or recurse on a linked leaf in the next dimension. This requires
 one disk read per dimension, for $O(d)$ in total. 
 
 Let the disk-read complexity of the algorithm with $m$ nodes and $d$ dimensions
-equal $R(m, d)$. Each one of the linked-tree node recursions operates on
-$(O(\frac{m}{B})$ elements, on $d-1$ dimensions, so the total reads from all $O(B)$
-of these operations is $R(m, d-1)$. Each of the constant number of child node
-recursions takes $O(\log_B m)$ reads on every dimension but the last. In the
-last dimension, there is the possibility of a leaf-to-leaf walk, so the
-complexity jumps to $O(\log_B m + \frac{k}{B})$ reads. Therefore, again using
-logic similar to the runtime analysis in lecture 3, we see that running the
-entire algorithm from the root node of a BORT makes $O(\log_B m + k)$ reads from
-the disk. In the sections below, we will analyze how we can bound the
-\textit{types} of disk reads we have to make.
+equal $T(m, d)$. Each of the constant number of child node recursions takes
+$T(\frac{m}{B}, d)$ reads. Using analysis similar to that in Lecture 3, this
+evaluates to $O(\log_B m)$ reads total for any tree \cite{lecture}. In the last
+dimension, there is also the possibility of a leaf-to-leaf walk, so the
+complexity jumps to $O(\log_B m + \frac{k}{B})$ reads. 
+
+Each one of the linked-tree node recursions operates on $(O(\frac{m}{B})$
+elements, on $d-1$ dimensions, so the total reads from all $O(B)$ of these
+operations is $T(m, d-1)$. Therefore, again using logic similar to the runtime
+analysis in lecture 3, we see that running the entire algorithm from the root
+node of a BORT makes $O(\log_B^d m + k)$ reads from the disk. In the sections
+below, we will analyze how we can bound the \textit{types} of disk reads we have
+to make.
 
 \subsection{Back seek analysis}
 
